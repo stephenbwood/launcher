@@ -1,0 +1,22 @@
+{
+  "vscode": {
+    "exec": "code",
+    "args": ["{file}", "{arg}"],
+    "display_name": "Visual Studio Code",
+    "relay": {
+      "args": ["{file}", "--wait"],
+      "blocking": true
+    }
+  },
+  "word": {
+    "exec": "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE",
+    "args": ["{file}"]
+  },
+  "notepad": {
+    "exec": "notepad.exe",
+    "args": ["{file}"],
+    "relay": {
+      "blocking": true
+    }
+  }
+}

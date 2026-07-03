@@ -1,0 +1,63 @@
+//! Entry point for an incoming `launcher://` URL, from any delivery path:
+//! argv on cold start (§4.1/§4.3), the deep-link plugin (macOS Apple Event,
+//! §4.2), or a forwarded URL from a second instance (§5).
+
+use std::sync::Arc;
+
+use tauri::{AppHandle, Manager};
+
+use crate::error::AppResult;
+use crate::state::AppState;
+use crate::urlparse::{self, Route};
+
+/// Parse and act on a single `launcher://` URL.
+pub fn handle_url(app: &AppHandle, raw: &str) {
+    log::info!("handling url: {raw}");
+    if let Err(e) = dispatch(app, raw) {
+        log::warn!("failed to handle url '{raw}': {e}");
+    }
+}
+
+fn dispatch(app: &AppHandle, raw: &str) -> AppResult<()> {
+    let route = urlparse::parse(raw)?;
+    let state = app.state::<Arc<AppState>>().inner().clone();
+
+    match route {
+        Route::Run {
+            app_id,
+            named,
+            positional,
+        } => {
+            crate::run::launch(&state.config_path, &app_id, &named, &positional)?;
+        }
+        Route::Relay {
+            app_id,
+            src,
+            dest,
+            filename,
+        } => {
+            // Relay is async (download → spawn → watch); run it off the caller.
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = crate::relay::start_session(
+                    app.clone(),
+                    state,
+                    app_id,
+                    src,
+                    dest,
+                    filename,
+                )
+                .await
+                {
+                    log::warn!("relay session failed to start: {e}");
+                }
+            });
+        }
+    }
+    Ok(())
+}
+
+/// Scan a process's argv for the first `launcher://` argument (§4.1/§4.3).
+pub fn url_from_args<I: IntoIterator<Item = String>>(args: I) -> Option<String> {
+    args.into_iter().find(|a| a.starts_with("launcher://"))
+}

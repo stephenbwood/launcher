@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Launcher</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">Launcher</div>
+      <nav class="tabs">
+        <button class="tab is-active" data-view="queue">Relay Queue</button>
+        <button class="tab" data-view="settings">Settings</button>
+      </nav>
+    </header>
+
+    <main>
+      <!-- §7.2 Relay Queue -->
+      <section id="view-queue" class="view is-active">
+        <table class="sessions" id="sessions-table">
+          <thead>
+            <tr>
+              <th class="col-file">File</th>
+              <th class="col-app">Target application</th>
+              <th class="col-status">Status</th>
+              <th class="col-actions"></th>
+            </tr>
+          </thead>
+          <tbody id="sessions-body"></tbody>
+        </table>
+        <div class="empty" id="queue-empty">No active relay sessions</div>
+      </section>
+
+      <!-- §7.1 Settings -->
+      <section id="view-settings" class="view">
+        <div class="section-head">
+          <h2>Registered applications</h2>
+          <div class="head-actions">
+            <button class="btn" id="import-apps">Import File…</button>
+            <button class="btn" id="import-url">Import URL…</button>
+            <button class="btn" id="export-apps">Export…</button>
+            <button class="btn primary" id="add-app">+ Add Application</button>
+          </div>
+        </div>
+        <ul class="app-list" id="app-list"></ul>
+        <div class="empty" id="settings-empty">
+          <p>No applications registered yet</p>
+          <button class="btn primary" id="add-app-empty">+ Add Application</button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Edit form modal (§7.1) -->
+    <div class="modal-backdrop" id="modal" hidden>
+      <div class="modal">
+        <h3 id="modal-title">Add Application</h3>
+        <form id="app-form">
+          <label>
+            app-id
+            <input type="text" id="f-app-id" required autocomplete="off" />
+            <small id="app-id-hint" class="hint"></small>
+          </label>
+
+          <label>
+            exec
+            <span class="row">
+              <input type="text" id="f-exec" required autocomplete="off" />
+              <button type="button" class="btn" id="pick-exec">Browse…</button>
+            </span>
+            <small id="exec-hint" class="hint"></small>
+          </label>
+
+          <label>display name (optional)
+            <input type="text" id="f-display" autocomplete="off" />
+          </label>
+
+          <fieldset>
+            <legend>args</legend>
+            <div id="args-list" class="args-list"></div>
+            <button type="button" class="btn small" id="add-arg">+ Add arg</button>
+            <small class="hint">Placeholders: <code>{file}</code>, <code>{arg}</code>, or named like <code>{key}</code>.</small>
+          </fieldset>
+
+          <div class="relay-section">
+            <label class="checkbox">
+              <input type="checkbox" id="f-relay-enabled" />
+              Enable relay for this application
+            </label>
+
+            <div id="relay-fields" hidden>
+              <label>relay exec (optional, falls back to exec)
+                <input type="text" id="f-relay-exec" autocomplete="off" />
+              </label>
+              <fieldset>
+                <legend>relay args (optional)</legend>
+                <div id="relay-args-list" class="args-list"></div>
+                <button type="button" class="btn small" id="add-relay-arg">+ Add arg</button>
+                <small class="hint">
+                  <code>{file}</code> is the downloaded file.
+                  <code>{src}</code>, <code>{dest}</code>, and <code>{filename}</code>
+                  are supplied by the <code>relay://</code> URL and handled
+                  automatically — don't add them here.
+                </small>
+              </fieldset>
+
+              <label class="checkbox">
+                <input type="checkbox" id="f-relay-blocking" />
+                blocking (app blocks until closed)
+              </label>
+
+              <label>Upload method (on completion)
+                <select id="f-upload-method">
+                  <option value="put">PUT — raw file body</option>
+                  <option value="post">POST — raw file body</option>
+                  <option value="multipart">POST — multipart/form-data</option>
+                </select>
+              </label>
+
+              <div id="multipart-fields" hidden>
+                <label>File field name
+                  <input type="text" id="f-file-field" placeholder="file" autocomplete="off" />
+                </label>
+                <fieldset>
+                  <legend>Additional form fields (optional)</legend>
+                  <div id="form-fields-list" class="fields-list"></div>
+                  <button type="button" class="btn small" id="add-form-field">+ Add field</button>
+                </fieldset>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn" id="cancel-edit">Cancel</button>
+            <button type="submit" class="btn primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Import-from-URL modal -->
+    <div class="modal-backdrop" id="url-modal" hidden>
+      <div class="modal small">
+        <h3>Import from URL</h3>
+        <form id="url-form">
+          <label>
+            Configuration URL (https)
+            <input type="url" id="f-import-url" placeholder="https://example.com/apps.json" autocomplete="off" required />
+          </label>
+          <p class="hint">Imported apps are merged into your current definitions; you'll be asked how to resolve any conflicts.</p>
+          <div class="modal-actions">
+            <button type="button" class="btn" id="cancel-url-import">Cancel</button>
+            <button type="submit" class="btn primary">Import</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
