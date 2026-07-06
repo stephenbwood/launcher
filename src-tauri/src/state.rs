@@ -5,6 +5,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
+use crate::error::AppResult;
+use crate::logs::LogStore;
 use crate::relay::SessionRuntime;
 
 /// Default filesystem idle-debounce window (§6.2). Configurable later (§8).
@@ -17,6 +19,9 @@ pub struct AppState {
     /// watcher callback runs on a synchronous thread and must touch this map.
     /// Invariant: never hold this lock across an `.await`.
     pub sessions: Mutex<HashMap<String, SessionRuntime>>,
+
+    /// Logged URI handling records shown in the Logs tab.
+    pub logs: Mutex<LogStore>,
 
     /// `<app-data>/relay-sessions/` (§6.1).
     pub sessions_dir: PathBuf,
@@ -32,13 +37,14 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(sessions_dir: PathBuf, config_path: PathBuf) -> Self {
-        Self {
+    pub fn new(sessions_dir: PathBuf, config_path: PathBuf, logs_path: PathBuf) -> AppResult<Self> {
+        Ok(Self {
             sessions: Mutex::new(HashMap::new()),
+            logs: Mutex::new(LogStore::load(logs_path)?),
             sessions_dir,
             config_path,
             http: reqwest::Client::new(),
             idle_secs: DEFAULT_IDLE_SECS,
-        }
+        })
     }
 }

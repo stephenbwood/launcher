@@ -265,3 +265,22 @@ code {
   border-radius: 4px;
   font-size: 11px;
 }
+
+/* logs */
+.logs-table {
+  table-layout: fixed;
+}
+.logs-table .col-time { width: 180px; }
+.logs-table .col-status { width: 110px; }
+.logs-table .col-uri,
+.logs-table .col-cli { width: auto; }
+.log-mono {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.log-status { font-weight: 600; }
+.log-status-handled { color: var(--muted); }
+.log-status-launched { color: var(--ok); }
+.log-status-error { color: var(--danger); }

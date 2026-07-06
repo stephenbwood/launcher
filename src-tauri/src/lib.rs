@@ -5,6 +5,7 @@ mod commands;
 mod config;
 mod dispatch;
 mod error;
+mod logs;
 mod registration;
 mod relay;
 mod run;
@@ -51,7 +52,11 @@ pub fn run() {
             std::fs::create_dir_all(&config_dir)?;
             let config_path = config::config_path(&config_dir);
 
-            let state = Arc::new(AppState::new(sessions_dir, config_path));
+            let state = Arc::new(AppState::new(
+                sessions_dir,
+                config_path,
+                data_dir.join("logs.json"),
+            )?);
             app.manage(state.clone());
 
             // ---- §4 OS scheme registration (per-user, no elevation) ----
@@ -90,6 +95,7 @@ pub fn run() {
             commands::commit_import,
             commands::exec_exists,
             commands::list_sessions,
+            commands::list_logs,
             commands::session_upload_finish,
             commands::session_retry,
             commands::session_keep_editing,

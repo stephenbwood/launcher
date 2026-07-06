@@ -189,6 +189,7 @@ pub async fn start_session(
     src: String,
     dest: String,
     filename: String,
+    log_id: Option<String>,
 ) -> AppResult<String> {
     let cfg = config::load(&state.config_path)?;
     let def = config::get(&cfg, &app_id)?.clone();
@@ -264,7 +265,7 @@ pub async fn start_session(
         commit(&app, &state, s);
     }
 
-    spawn_editor_and_watch(&app, &state, &def, &id, &local_path)?;
+    spawn_editor_and_watch(&app, &state, &def, &id, &local_path, log_id.as_deref())?;
 
     Ok(id)
 }
@@ -285,6 +286,7 @@ fn spawn_editor_and_watch(
     def: &config::AppDefinition,
     id: &str,
     local_path: &Path,
+    log_id: Option<&str>,
 ) -> AppResult<()> {
     let exec = def.relay_exec().to_string();
     let template = def.relay_args().to_vec();
@@ -292,6 +294,17 @@ fn spawn_editor_and_watch(
 
     let file = local_path.to_string_lossy().to_string();
     let argv = substitute::build_argv(&template, Some(&file), &HashMap::new(), &[]);
+    if let Some(log_id) = log_id {
+        if let Err(e) = state
+            .logs
+            .lock()
+            .expect("logs lock poisoned")
+            .mark_cli(log_id, &exec, &argv)
+        {
+            log::warn!("failed to update launch log {log_id}: {e}");
+        }
+    }
+
     log::info!("relay spawn: {exec} {argv:?} (blocking={blocking})");
 
     let mut tasks: Vec<tokio::task::JoinHandle<()>> = Vec::new();
@@ -363,9 +376,12 @@ fn build_watcher(
             };
 
             // Only react to events touching the working file, not session.json.
-            let touched = events
-                .iter()
-                .any(|e| e.path.file_name().map(|n| n == watch_name.as_str()).unwrap_or(false));
+            let touched = events.iter().any(|e| {
+                e.path
+                    .file_name()
+                    .map(|n| n == watch_name.as_str())
+                    .unwrap_or(false)
+            });
             if !touched {
                 return;
             }
@@ -380,8 +396,7 @@ fn build_watcher(
             // do NOT auto-fire the upload (§6.2). Never override a terminal state.
             let updated = mutate(&state, &id, |s| {
                 s.last_modified = last_modified;
-                if !s.blocking && matches!(s.status, SessionStatus::Editing | SessionStatus::Idle)
-                {
+                if !s.blocking && matches!(s.status, SessionStatus::Editing | SessionStatus::Idle) {
                     s.status = SessionStatus::Idle;
                 }
             });
@@ -419,7 +434,10 @@ pub async fn complete_and_upload(app: AppHandle, state: Arc<AppState>, id: Strin
             None => return,
         }
     };
-    if matches!(session.status, SessionStatus::Uploading | SessionStatus::Done) {
+    if matches!(
+        session.status,
+        SessionStatus::Uploading | SessionStatus::Done
+    ) {
         return;
     }
 
@@ -621,7 +639,10 @@ pub fn recover_orphans(app: &AppHandle, state: &AppState) {
         let mut session: Session = match serde_json::from_str(&text) {
             Ok(s) => s,
             Err(e) => {
-                log::warn!("skipping unreadable session {}: {e}", entry.path().display());
+                log::warn!(
+                    "skipping unreadable session {}: {e}",
+                    entry.path().display()
+                );
                 continue;
             }
         };
@@ -667,5 +688,5 @@ pub fn resume(app: &AppHandle, state: &Arc<AppState>, id: &str) -> AppResult<()>
         commit(app, state, &s);
     }
 
-    spawn_editor_and_watch(app, state, &def, id, &local_path)
+    spawn_editor_and_watch(app, state, &def, id, &local_path, None)
 }

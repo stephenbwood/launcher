@@ -16,6 +16,7 @@ function showView(view) {
   document.querySelectorAll(".tab").forEach((el) => el.classList.remove("is-active"));
   document.getElementById(`view-${view}`)?.classList.add("is-active");
   document.querySelector(`.tab[data-view="${view}"]`)?.classList.add("is-active");
+  if (view === "logs") refreshLogs().catch((e) => console.error(e));
 }
 
 document.querySelectorAll("[data-view]").forEach((el) => {
@@ -157,6 +158,66 @@ async function refreshSessions() {
 
 // Live updates pushed from the Rust core (§7.2).
 listen("relay:update", (e) => renderSessions(e.payload));
+
+
+// ---------------------------------------------------------------------------
+// Logs
+// ---------------------------------------------------------------------------
+
+const LOG_STATUS_LABELS = {
+  handled: "Handled",
+  launched: "Launched",
+  error: "Error",
+};
+
+function renderLogs(logs) {
+  const body = document.getElementById("logs-body");
+  const table = document.getElementById("logs-table");
+  const empty = document.getElementById("logs-empty");
+  body.innerHTML = "";
+
+  table.style.display = logs.length ? "" : "none";
+  empty.style.display = logs.length ? "none" : "";
+
+  for (const entry of logs) {
+    const tr = document.createElement("tr");
+
+    const time = document.createElement("td");
+    time.textContent = formatLogTime(entry.created_at);
+    tr.appendChild(time);
+
+    const uri = document.createElement("td");
+    uri.className = "log-mono";
+    uri.textContent = entry.raw_uri;
+    uri.title = entry.raw_uri;
+    tr.appendChild(uri);
+
+    const status = document.createElement("td");
+    status.className = `log-status log-status-${entry.status}`;
+    status.textContent = LOG_STATUS_LABELS[entry.status] || entry.status;
+    if (entry.error) status.title = entry.error;
+    tr.appendChild(status);
+
+    const cli = document.createElement("td");
+    cli.className = "log-mono";
+    cli.textContent = entry.cli_call || "";
+    cli.title = entry.cli_call || entry.error || "";
+    tr.appendChild(cli);
+
+    body.appendChild(tr);
+  }
+}
+
+async function refreshLogs() {
+  const logs = await invoke("list_logs");
+  renderLogs(logs);
+}
+
+function formatLogTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value || "";
+  return date.toLocaleString();
+}
 
 // ---------------------------------------------------------------------------
 // Settings — app definitions CRUD (§7.1)
@@ -555,3 +616,4 @@ function escapeHtml(str) {
 
 refreshSessions().catch((e) => console.error(e));
 refreshApps().catch((e) => console.error(e));
+refreshLogs().catch((e) => console.error(e));

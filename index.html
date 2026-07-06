@@ -12,6 +12,7 @@
       <nav class="tabs">
         <button class="tab is-active" data-view="queue">Relay Queue</button>
         <button class="tab" data-view="settings">Settings</button>
+        <button class="tab" data-view="logs">Logs</button>
       </nav>
     </header>
 
@@ -48,6 +49,21 @@
           <p>No applications registered yet</p>
           <button class="btn primary" id="add-app-empty">+ Add Application</button>
         </div>
+      </section>
+      <!-- Logs -->
+      <section id="view-logs" class="view">
+        <table class="sessions logs-table" id="logs-table">
+          <thead>
+            <tr>
+              <th class="col-time">Time</th>
+              <th class="col-uri">URI</th>
+              <th class="col-status">Status</th>
+              <th class="col-cli">CLI call</th>
+            </tr>
+          </thead>
+          <tbody id="logs-body"></tbody>
+        </table>
+        <div class="empty" id="logs-empty">No handled URIs logged yet</div>
       </section>
     </main>
 

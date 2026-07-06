@@ -156,8 +156,8 @@ pub fn commit_import(
 
 /// Deserialize an imported config from text and validate it.
 fn parse_and_validate(text: &str) -> AppResult<AppConfig> {
-    let cfg: AppConfig = serde_json::from_str(text)
-        .map_err(|e| AppError::Config(format!("invalid config: {e}")))?;
+    let cfg: AppConfig =
+        serde_json::from_str(text).map_err(|e| AppError::Config(format!("invalid config: {e}")))?;
     validate(&cfg)?;
     Ok(cfg)
 }
@@ -214,6 +214,17 @@ fn which_on_path(cmd: &str) -> Option<std::path::PathBuf> {
 #[tauri::command]
 pub fn list_sessions(state: State<'_, Arc<AppState>>) -> Vec<Session> {
     relay::snapshot(&state)
+}
+
+// ---- Logs screen: handled URI history ----
+
+#[tauri::command]
+pub fn list_logs(state: State<'_, Arc<AppState>>) -> Vec<crate::logs::LogEntry> {
+    state
+        .logs
+        .lock()
+        .expect("logs lock poisoned")
+        .list_newest_first()
 }
 
 #[tauri::command]
