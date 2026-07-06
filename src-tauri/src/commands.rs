@@ -1,13 +1,16 @@
 //! Tauri commands bridging the frontend UI to the Rust core (§7.1, §7.2).
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use tauri::{AppHandle, State};
 
 use crate::config::{self, AppConfig, AppDefinition};
 use crate::error::{AppError, AppResult};
+use crate::logs::format_cli_call;
 use crate::relay::{self, Session};
 use crate::state::AppState;
+use crate::substitute;
 
 // ---- Settings screen: app definitions CRUD (§7.1) ----
 
@@ -228,6 +231,81 @@ pub fn list_logs(state: State<'_, Arc<AppState>>) -> Vec<crate::logs::LogEntry> 
 }
 
 #[tauri::command]
+pub fn preview_cli_call(definition: AppDefinition) -> String {
+    preview_cli_for_definition(&definition)
+}
+
+fn preview_cli_for_definition(definition: &AppDefinition) -> String {
+    let exec = if definition.relay.is_some() {
+        definition.relay_exec()
+    } else {
+        &definition.exec
+    };
+    let template = if definition.relay.is_some() {
+        definition.relay_args()
+    } else {
+        &definition.args
+    };
+    let named = placeholder_values(template);
+    let positional = if template.iter().any(|arg| arg == "{arg}") {
+        vec!["{arg}".to_string()]
+    } else {
+        Vec::new()
+    };
+    let argv = substitute::build_argv(template, Some("{file}"), &named, &positional);
+    format_cli_call(exec, &argv)
+}
+
+fn placeholder_values(template: &[String]) -> HashMap<String, String> {
+    let mut values = HashMap::new();
+    for token in template {
+        let mut rest = token.as_str();
+        while let Some(start) = rest.find('{') {
+            let after_start = &rest[start + 1..];
+            let Some(end) = after_start.find('}') else {
+                break;
+            };
+            let key = &after_start[..end];
+            if !key.is_empty() {
+                values.insert(key.to_string(), format!("{{{key}}}"));
+            }
+            rest = &after_start[end + 1..];
+        }
+    }
+    values
+}
+
+#[tauri::command]
+pub fn clear_logs(state: State<'_, Arc<AppState>>) -> AppResult<()> {
+    state.logs.lock().expect("logs lock poisoned").clear()
+}
+
+#[tauri::command]
+pub fn rerun_log_entry(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> AppResult<()> {
+    let entry = state
+        .logs
+        .lock()
+        .expect("logs lock poisoned")
+        .get(&id)
+        .ok_or_else(|| AppError::Config(format!("log entry '{id}' not found")))?;
+
+    if let Some(exec) = entry.exec {
+        let argv = entry.argv.unwrap_or_default();
+        std::process::Command::new(&exec)
+            .args(&argv)
+            .spawn()
+            .map_err(|e| AppError::Other(format!("failed to launch '{exec}': {e}")))?;
+        return Ok(());
+    }
+
+    crate::dispatch::rerun_url(&app, &entry.raw_uri)
+}
+
+#[tauri::command]
 pub async fn session_upload_finish(
     app: AppHandle,
     state: State<'_, Arc<AppState>>,
@@ -290,4 +368,27 @@ pub fn session_discard(
     id: String,
 ) -> AppResult<()> {
     relay::discard(&app, &state, &id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn previews_cli_call_with_placeholders_and_log_quoting() {
+        let definition = AppDefinition {
+            exec: "C:\\Program Files\\Editor\\editor.exe".into(),
+            args: vec!["--open".into(), "{file}".into(), "{arg}".into()],
+            display_name: None,
+            relay: None,
+            relay_allowed: None,
+        };
+
+        let preview = preview_cli_for_definition(&definition);
+
+        assert_eq!(
+            preview,
+            "\"C:\\Program Files\\Editor\\editor.exe\" --open {file} {arg}"
+        );
+    }
 }

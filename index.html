@@ -52,6 +52,12 @@
       </section>
       <!-- Logs -->
       <section id="view-logs" class="view">
+        <div class="section-head">
+          <h2>Logs</h2>
+          <div class="head-actions">
+            <button class="btn danger" id="clear-logs">Clear</button>
+          </div>
+        </div>
         <table class="sessions logs-table" id="logs-table">
           <thead>
             <tr>
@@ -59,6 +65,7 @@
               <th class="col-uri">URI</th>
               <th class="col-status">Status</th>
               <th class="col-cli">CLI call</th>
+              <th class="col-log-actions"></th>
             </tr>
           </thead>
           <tbody id="logs-body"></tbody>

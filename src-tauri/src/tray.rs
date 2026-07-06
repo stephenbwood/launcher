@@ -7,6 +7,7 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::relay::{Session, SessionStatus};
+use crate::window_state::MainWindowState;
 
 const TRAY_ID: &str = "main";
 
@@ -119,6 +120,17 @@ fn on_menu(app: &AppHandle, id: &str) {
 /// Show + focus the main window and ask the frontend to switch to `view`.
 pub fn open_main(app: &AppHandle, view: &str) {
     if let Some(win) = app.get_webview_window("main") {
+        if let Some(state) = app.try_state::<std::sync::Arc<crate::state::AppState>>() {
+            if let Err(e) = state
+                .main_window_state
+                .lock()
+                .expect("main window state lock poisoned")
+                .set(MainWindowState::Visible)
+            {
+                log::warn!("failed to persist main window visible state: {e}");
+            }
+        }
+        let _ = win.unminimize();
         let _ = win.show();
         let _ = win.set_focus();
         let _ = win.emit("navigate", view);

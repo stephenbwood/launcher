@@ -13,13 +13,15 @@ mod state;
 mod substitute;
 mod tray;
 mod urlparse;
+mod window_state;
 
 use std::sync::Arc;
 
-use tauri::Manager;
+use tauri::{Manager, WindowEvent};
 use tauri_plugin_deep_link::DeepLinkExt;
 
 use state::AppState;
+use window_state::MainWindowState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -40,6 +42,29 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_log::Builder::new().build())
+        .on_window_event(|window, event| {
+            if window.label() != "main" {
+                return;
+            }
+            if !matches!(event, WindowEvent::Resized(_)) {
+                return;
+            }
+            let Ok(true) = window.is_minimized() else {
+                return;
+            };
+            let state = window.state::<Arc<AppState>>();
+            if let Err(e) = state
+                .main_window_state
+                .lock()
+                .expect("main window state lock poisoned")
+                .set(MainWindowState::MinimizedToTray)
+            {
+                log::warn!("failed to persist main window tray-minimized state: {e}");
+            }
+            if let Err(e) = window.hide() {
+                log::warn!("failed to hide minimized main window to tray: {e}");
+            }
+        })
         .setup(|app| {
             let handle = app.handle().clone();
 
@@ -56,6 +81,7 @@ pub fn run() {
                 sessions_dir,
                 config_path,
                 data_dir.join("logs.json"),
+                data_dir.join("main-window-state.json"),
             )?);
             app.manage(state.clone());
 
@@ -74,6 +100,19 @@ pub fn run() {
 
             // ---- §7.2 system tray ----
             tray::build(&handle)?;
+            if state
+                .main_window_state
+                .lock()
+                .expect("main window state lock poisoned")
+                .state()
+                == MainWindowState::MinimizedToTray
+            {
+                if let Some(win) = handle.get_webview_window("main") {
+                    if let Err(e) = win.hide() {
+                        log::warn!("failed to restore main window tray-minimized state: {e}");
+                    }
+                }
+            }
 
             // ---- §6.6 crash recovery: surface orphaned sessions ----
             relay::recover_orphans(&handle, &state);
@@ -96,6 +135,9 @@ pub fn run() {
             commands::exec_exists,
             commands::list_sessions,
             commands::list_logs,
+            commands::preview_cli_call,
+            commands::clear_logs,
+            commands::rerun_log_entry,
             commands::session_upload_finish,
             commands::session_retry,
             commands::session_keep_editing,

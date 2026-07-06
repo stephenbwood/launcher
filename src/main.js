@@ -174,10 +174,12 @@ function renderLogs(logs) {
   const body = document.getElementById("logs-body");
   const table = document.getElementById("logs-table");
   const empty = document.getElementById("logs-empty");
+  const clear = document.getElementById("clear-logs");
   body.innerHTML = "";
 
   table.style.display = logs.length ? "" : "none";
   empty.style.display = logs.length ? "none" : "";
+  clear.disabled = logs.length === 0;
 
   for (const entry of logs) {
     const tr = document.createElement("tr");
@@ -204,6 +206,11 @@ function renderLogs(logs) {
     cli.title = entry.cli_call || entry.error || "";
     tr.appendChild(cli);
 
+    const actions = document.createElement("td");
+    actions.className = "actions";
+    actions.appendChild(actionButton("Re-run", "primary", () => rerunLogEntry(entry.id)));
+    tr.appendChild(actions);
+
     body.appendChild(tr);
   }
 }
@@ -217,6 +224,25 @@ function formatLogTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value || "";
   return date.toLocaleString();
+}
+
+async function rerunLogEntry(id) {
+  try {
+    await invoke("rerun_log_entry", { id });
+    await refreshLogs();
+  } catch (e) {
+    alert(`Re-run failed: ${e}`);
+  }
+}
+
+async function clearLogs() {
+  if (!confirm("Clear all log entries?")) return;
+  try {
+    await invoke("clear_logs");
+    await refreshLogs();
+  } catch (e) {
+    alert(`Clear failed: ${e}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -250,7 +276,7 @@ function exampleUri(id, def) {
   return `launcher://run/${id}${query}`;
 }
 
-function renderAppList(config) {
+async function renderAppList(config) {
   currentConfig = config;
   const list = document.getElementById("app-list");
   const empty = document.getElementById("settings-empty");
@@ -268,7 +294,7 @@ function renderAppList(config) {
     const info = document.createElement("div");
     info.className = "app-info";
     const hasRelay = def.relay ? '<span class="badge">relay</span>' : "";
-    const example = exampleUri(id, def);
+    const example = await cliPreview(def);
     const title = def.display_name
       ? `${escapeHtml(def.display_name)} [${escapeHtml(id)}]`
       : escapeHtml(id);
@@ -287,7 +313,7 @@ function renderAppList(config) {
       if (!confirm(`Delete application "${id}"?`)) return;
       try {
         const updated = await invoke("delete_app", { appId: id });
-        renderAppList(updated);
+        await renderAppList(updated);
       } catch (e) {
         alert(`${e}`);
       }
@@ -300,7 +326,16 @@ function renderAppList(config) {
 
 async function refreshApps() {
   const config = await invoke("list_apps");
-  renderAppList(config);
+  await renderAppList(config);
+}
+
+async function cliPreview(def) {
+  try {
+    return await invoke("preview_cli_call", { definition: def });
+  } catch (e) {
+    console.error(e);
+    return exampleUri("", def);
+  }
 }
 
 // ---- arg list editors ----
@@ -453,7 +488,7 @@ async function submitForm(ev) {
 
   try {
     const updated = await invoke("save_app", { appId, definition });
-    renderAppList(updated);
+    await renderAppList(updated);
     closeForm();
   } catch (e) {
     alert(`Save failed: ${e}`);
@@ -469,6 +504,7 @@ document.getElementById("import-apps").addEventListener("click", importConfig);
 document.getElementById("import-url").addEventListener("click", openUrlImport);
 document.getElementById("cancel-url-import").addEventListener("click", closeUrlImport);
 document.getElementById("url-form").addEventListener("submit", submitUrlImport);
+document.getElementById("clear-logs").addEventListener("click", clearLogs);
 
 async function openUrlImport() {
   const input = document.getElementById("f-import-url");
@@ -564,7 +600,7 @@ async function resolveAndCommit(preview) {
     imported: preview.imported,
     replaceIds,
   });
-  renderAppList(merged);
+  await renderAppList(merged);
 }
 document.getElementById("cancel-edit").addEventListener("click", closeForm);
 document.getElementById("app-form").addEventListener("submit", submitForm);

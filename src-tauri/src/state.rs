@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 use crate::error::AppResult;
 use crate::logs::LogStore;
 use crate::relay::SessionRuntime;
+use crate::window_state::MainWindowStateStore;
 
 /// Default filesystem idle-debounce window (§6.2). Configurable later (§8).
 pub const DEFAULT_IDLE_SECS: u64 = 30;
@@ -27,6 +28,9 @@ pub struct AppState {
     /// Logged URI handling records shown in the Logs tab.
     pub logs: Mutex<LogStore>,
 
+    /// Persisted visibility state for the main window.
+    pub main_window_state: Mutex<MainWindowStateStore>,
+
     /// Recently accepted inbound protocol URIs used to suppress duplicate OS/plugin deliveries.
     recent_inbound_uris: Mutex<HashMap<String, Instant>>,
 
@@ -44,10 +48,16 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(sessions_dir: PathBuf, config_path: PathBuf, logs_path: PathBuf) -> AppResult<Self> {
+    pub fn new(
+        sessions_dir: PathBuf,
+        config_path: PathBuf,
+        logs_path: PathBuf,
+        main_window_state_path: PathBuf,
+    ) -> AppResult<Self> {
         Ok(Self {
             sessions: Mutex::new(HashMap::new()),
             logs: Mutex::new(LogStore::load(logs_path)?),
+            main_window_state: Mutex::new(MainWindowStateStore::load(main_window_state_path)?),
             recent_inbound_uris: Mutex::new(HashMap::new()),
             sessions_dir,
             config_path,
@@ -100,6 +110,7 @@ mod tests {
             temp_path("sessions"),
             temp_path("apps.json"),
             temp_path("logs.json"),
+            temp_path("main-window-state.json"),
         )
         .unwrap();
         let now = Instant::now();
@@ -116,6 +127,7 @@ mod tests {
             temp_path("sessions"),
             temp_path("apps.json"),
             temp_path("logs.json"),
+            temp_path("main-window-state.json"),
         )
         .unwrap();
         let now = Instant::now();

@@ -18,12 +18,24 @@ pub fn handle_url(app: &AppHandle, raw: &str) {
     }
 }
 
+/// Re-run a URL from an explicit user action. This bypasses the inbound URI
+/// debounce because it is not an OS/plugin duplicate delivery.
+pub fn rerun_url(app: &AppHandle, raw: &str) -> AppResult<()> {
+    log::info!("re-running url: {raw}");
+    dispatch_inner(app, raw)
+}
+
 fn dispatch(app: &AppHandle, raw: &str) -> AppResult<()> {
     let state = app.state::<Arc<AppState>>().inner().clone();
     if !state.should_handle_inbound_uri(raw) {
         log::info!("suppressing duplicate inbound url: {raw}");
         return Ok(());
     }
+    dispatch_inner(app, raw)
+}
+
+fn dispatch_inner(app: &AppHandle, raw: &str) -> AppResult<()> {
+    let state = app.state::<Arc<AppState>>().inner().clone();
 
     let route = match urlparse::parse(raw) {
         Ok(route) => route,

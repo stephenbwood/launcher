@@ -272,6 +272,7 @@ code {
 }
 .logs-table .col-time { width: 180px; }
 .logs-table .col-status { width: 110px; }
+.logs-table .col-log-actions { width: 92px; }
 .logs-table .col-uri,
 .logs-table .col-cli { width: auto; }
 .log-mono {

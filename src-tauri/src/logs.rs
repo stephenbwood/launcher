@@ -27,6 +27,10 @@ pub struct LogEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cli_call: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exec: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub argv: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
 
@@ -62,6 +66,8 @@ impl LogStore {
             app_id: app_id.map(|s| s.to_string()),
             status: LogStatus::Handled,
             cli_call: None,
+            exec: None,
+            argv: None,
             error: None,
         });
         self.persist()?;
@@ -84,6 +90,8 @@ impl LogStore {
             app_id: app_id.map(|s| s.to_string()),
             status: LogStatus::Error,
             cli_call: None,
+            exec: None,
+            argv: None,
             error: Some(error.to_string()),
         });
         self.persist()?;
@@ -94,6 +102,8 @@ impl LogStore {
         if let Some(entry) = self.entries.iter_mut().find(|entry| entry.id == id) {
             entry.status = LogStatus::Launched;
             entry.cli_call = Some(format_cli_call(exec, argv));
+            entry.exec = Some(exec.to_string());
+            entry.argv = Some(argv.to_vec());
             entry.error = None;
             self.persist()?;
         }
@@ -113,6 +123,15 @@ impl LogStore {
         let mut entries = self.entries.clone();
         entries.sort_by(|a, b| b.created_at.cmp(&a.created_at));
         entries
+    }
+
+    pub fn get(&self, id: &str) -> Option<LogEntry> {
+        self.entries.iter().find(|entry| entry.id == id).cloned()
+    }
+
+    pub fn clear(&mut self) -> AppResult<()> {
+        self.entries.clear();
+        self.persist()
     }
 
     fn persist(&self) -> AppResult<()> {
@@ -207,6 +226,24 @@ mod tests {
             entries[0].cli_call.as_deref(),
             Some("editor.exe C:\\tmp\\file.txt")
         );
+        assert_eq!(entries[0].exec.as_deref(), Some("editor.exe"));
+        assert_eq!(entries[0].argv, Some(vec!["C:\\tmp\\file.txt".into()]));
+
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn clears_log_entries_on_disk() {
+        let path = temp_path("clear");
+        let mut store = LogStore::load(path.clone()).unwrap();
+        store
+            .append_handled_uri("launcher://run/editor", "run", Some("editor"))
+            .unwrap();
+
+        store.clear().unwrap();
+
+        let reloaded = LogStore::load(path.clone()).unwrap();
+        assert!(reloaded.list_newest_first().is_empty());
 
         let _ = fs::remove_file(path);
     }
