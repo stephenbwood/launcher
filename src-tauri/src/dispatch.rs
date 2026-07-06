@@ -20,6 +20,11 @@ pub fn handle_url(app: &AppHandle, raw: &str) {
 
 fn dispatch(app: &AppHandle, raw: &str) -> AppResult<()> {
     let state = app.state::<Arc<AppState>>().inner().clone();
+    if !state.should_handle_inbound_uri(raw) {
+        log::info!("suppressing duplicate inbound url: {raw}");
+        return Ok(());
+    }
+
     let route = match urlparse::parse(raw) {
         Ok(route) => route,
         Err(e) => {
