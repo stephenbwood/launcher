@@ -6,134 +6,134 @@
     <title>Launcher</title>
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
-  <body>
-    <header class="topbar">
-      <div class="brand">Launcher</div>
-      <nav class="tabs">
-        <button class="tab is-active" data-view="queue">Relay Queue</button>
-        <button class="tab" data-view="settings">Settings</button>
-        <button class="tab" data-view="logs">Logs</button>
+  <body class="m-0 bg-app-bg text-sm text-app-text [color-scheme:dark]">
+    <header class="flex items-center gap-4 border-b border-app-border bg-app-panel px-4 py-2.5">
+      <div class="font-bold tracking-wide">Launcher</div>
+      <nav class="ml-2 flex gap-1">
+        <button class="tab rounded-md bg-app-panel-2 px-3 py-1.5 text-sm text-app-text transition-colors hover:bg-app-panel-2 hover:text-app-text" data-view="queue">Relay Queue</button>
+        <button class="tab rounded-md px-3 py-1.5 text-sm text-app-muted transition-colors hover:bg-app-panel-2 hover:text-app-text" data-view="settings">Settings</button>
+        <button class="tab rounded-md px-3 py-1.5 text-sm text-app-muted transition-colors hover:bg-app-panel-2 hover:text-app-text" data-view="logs">Logs</button>
       </nav>
     </header>
 
-    <main>
+    <main class="p-4">
       <!-- §7.2 Relay Queue -->
-      <section id="view-queue" class="view is-active">
-        <table class="sessions" id="sessions-table">
+      <section id="view-queue" class="view">
+        <table class="w-full border-collapse" id="sessions-table">
           <thead>
             <tr>
-              <th class="col-file">File</th>
-              <th class="col-app">Target application</th>
-              <th class="col-status">Status</th>
-              <th class="col-actions"></th>
+              <th class="border-b border-app-border px-2.5 py-2 text-left text-xs font-semibold uppercase tracking-wide text-app-muted">File</th>
+              <th class="border-b border-app-border px-2.5 py-2 text-left text-xs font-semibold uppercase tracking-wide text-app-muted">Target application</th>
+              <th class="border-b border-app-border px-2.5 py-2 text-left text-xs font-semibold uppercase tracking-wide text-app-muted">Status</th>
+              <th class="w-px border-b border-app-border px-2.5 py-2"></th>
             </tr>
           </thead>
           <tbody id="sessions-body"></tbody>
         </table>
-        <div class="empty" id="queue-empty">No active relay sessions</div>
+        <div class="px-4 py-12 text-center text-app-muted" id="queue-empty">No active relay sessions</div>
       </section>
 
       <!-- §7.1 Settings -->
-      <section id="view-settings" class="view">
-        <div class="section-head">
-          <h2>Registered applications</h2>
-          <div class="head-actions">
-            <button class="btn" id="import-apps">Import File…</button>
-            <button class="btn" id="import-url">Import URL…</button>
-            <button class="btn" id="export-apps">Export…</button>
-            <button class="btn primary" id="add-app">+ Add Application</button>
+      <section id="view-settings" class="view" hidden>
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="m-0 text-base font-semibold">Registered applications</h2>
+          <div class="flex gap-2">
+            <button class="inline-flex items-center justify-center rounded-md border border-app-border bg-app-panel-2 px-3 py-1.5 text-[13px] text-app-text transition hover:bg-[#40434a]" id="import-apps">Import File…</button>
+            <button class="inline-flex items-center justify-center rounded-md border border-app-border bg-app-panel-2 px-3 py-1.5 text-[13px] text-app-text transition hover:bg-[#40434a]" id="import-url">Import URL…</button>
+            <button class="inline-flex items-center justify-center rounded-md border border-app-border bg-app-panel-2 px-3 py-1.5 text-[13px] text-app-text transition hover:bg-[#40434a]" id="export-apps">Export…</button>
+            <button class="inline-flex items-center justify-center rounded-md border border-app-accent bg-app-accent px-3 py-1.5 text-[13px] text-white transition hover:brightness-110" id="add-app">+ Add Application</button>
           </div>
         </div>
-        <ul class="app-list" id="app-list"></ul>
-        <div class="empty" id="settings-empty">
+        <ul class="m-0 list-none p-0" id="app-list"></ul>
+        <div class="px-4 py-12 text-center text-app-muted" id="settings-empty">
           <p>No applications registered yet</p>
-          <button class="btn primary" id="add-app-empty">+ Add Application</button>
+          <button class="mt-3 inline-flex items-center justify-center rounded-md border border-app-accent bg-app-accent px-3 py-1.5 text-[13px] text-white transition hover:brightness-110" id="add-app-empty">+ Add Application</button>
         </div>
       </section>
       <!-- Logs -->
-      <section id="view-logs" class="view">
-        <div class="section-head">
-          <h2>Logs</h2>
-          <div class="head-actions">
-            <button class="btn danger" id="clear-logs">Clear</button>
+      <section id="view-logs" class="view" hidden>
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="m-0 text-base font-semibold">Logs</h2>
+          <div class="flex gap-2">
+            <button class="inline-flex items-center justify-center rounded-md border border-[#5a3134] bg-app-panel-2 px-3 py-1.5 text-[13px] text-[#f4b6b6] transition hover:bg-app-danger hover:text-white disabled:cursor-not-allowed disabled:opacity-60" id="clear-logs">Clear</button>
           </div>
         </div>
-        <table class="sessions logs-table" id="logs-table">
+        <table class="w-full table-fixed border-collapse" id="logs-table">
           <thead>
             <tr>
-              <th class="col-time">Time</th>
-              <th class="col-uri">URI</th>
-              <th class="col-status">Status</th>
-              <th class="col-cli">CLI call</th>
-              <th class="col-log-actions"></th>
+              <th class="w-[180px] border-b border-app-border px-2.5 py-2 text-left text-xs font-semibold uppercase tracking-wide text-app-muted">Time</th>
+              <th class="border-b border-app-border px-2.5 py-2 text-left text-xs font-semibold uppercase tracking-wide text-app-muted">URI</th>
+              <th class="w-[110px] border-b border-app-border px-2.5 py-2 text-left text-xs font-semibold uppercase tracking-wide text-app-muted">Status</th>
+              <th class="border-b border-app-border px-2.5 py-2 text-left text-xs font-semibold uppercase tracking-wide text-app-muted">CLI call</th>
+              <th class="w-[92px] border-b border-app-border px-2.5 py-2"></th>
             </tr>
           </thead>
           <tbody id="logs-body"></tbody>
         </table>
-        <div class="empty" id="logs-empty">No handled URIs logged yet</div>
+        <div class="px-4 py-12 text-center text-app-muted" id="logs-empty">No handled URIs logged yet</div>
       </section>
     </main>
 
     <!-- Edit form modal (§7.1) -->
-    <div class="modal-backdrop" id="modal" hidden>
-      <div class="modal">
-        <h3 id="modal-title">Add Application</h3>
+    <div class="fixed inset-0 z-10 flex items-center justify-center bg-black/60" id="modal" hidden>
+      <div class="max-h-[88vh] w-[480px] overflow-y-auto rounded-[10px] border border-app-border bg-app-panel p-5">
+        <h3 class="mb-4 mt-0 text-base font-semibold" id="modal-title">Add Application</h3>
         <form id="app-form">
-          <label>
+          <label class="mb-3 block">
             app-id
-            <input type="text" id="f-app-id" required autocomplete="off" />
-            <small id="app-id-hint" class="hint"></small>
+            <input class="mt-1 w-full rounded-md border border-app-border bg-app-bg px-2.5 py-1.5 text-[13px] text-app-text disabled:opacity-60" type="text" id="f-app-id" required autocomplete="off" />
+            <small id="app-id-hint" class="mt-1 block text-[11px] text-app-muted"></small>
           </label>
 
-          <label>
+          <label class="mb-3 block">
             exec
-            <span class="row">
-              <input type="text" id="f-exec" required autocomplete="off" />
-              <button type="button" class="btn" id="pick-exec">Browse…</button>
+            <span class="mt-1 flex items-center gap-2">
+              <input class="min-w-0 flex-1 rounded-md border border-app-border bg-app-bg px-2.5 py-1.5 text-[13px] text-app-text" type="text" id="f-exec" required autocomplete="off" />
+              <button type="button" class="inline-flex items-center justify-center rounded-md border border-app-border bg-app-panel-2 px-3 py-1.5 text-[13px] text-app-text transition hover:bg-[#40434a]" id="pick-exec">Browse…</button>
             </span>
-            <small id="exec-hint" class="hint"></small>
+            <small id="exec-hint" class="mt-1 block text-[11px] text-app-muted"></small>
           </label>
 
-          <label>display name (optional)
-            <input type="text" id="f-display" autocomplete="off" />
+          <label class="mb-3 block">display name (optional)
+            <input class="mt-1 w-full rounded-md border border-app-border bg-app-bg px-2.5 py-1.5 text-[13px] text-app-text disabled:opacity-60" type="text" id="f-display" autocomplete="off" />
           </label>
 
-          <fieldset>
-            <legend>args</legend>
-            <div id="args-list" class="args-list"></div>
-            <button type="button" class="btn small" id="add-arg">+ Add arg</button>
-            <small class="hint">Placeholders: <code>{file}</code>, <code>{arg}</code>, or named like <code>{key}</code>.</small>
+          <fieldset class="mb-3 rounded-lg border border-app-border px-3 py-2.5">
+            <legend class="px-1 text-xs text-app-muted">args</legend>
+            <div id="args-list" class="mb-2 flex flex-col gap-1.5"></div>
+            <button type="button" class="inline-flex items-center justify-center rounded-md border border-app-border bg-app-panel-2 px-2 py-0.5 text-xs text-app-text transition hover:bg-[#40434a]" id="add-arg">+ Add arg</button>
+            <small class="mt-1 block text-[11px] text-app-muted">Placeholders: <code class="rounded bg-app-bg px-1 py-px text-[11px]">{file}</code>, <code class="rounded bg-app-bg px-1 py-px text-[11px]">{arg}</code>, or named like <code class="rounded bg-app-bg px-1 py-px text-[11px]">{key}</code>.</small>
           </fieldset>
 
-          <div class="relay-section">
-            <label class="checkbox">
+          <div class="mb-3 rounded-lg border border-app-border px-3 py-2.5">
+            <label class="flex items-center gap-2">
               <input type="checkbox" id="f-relay-enabled" />
               Enable relay for this application
             </label>
 
-            <div id="relay-fields" hidden>
-              <label>relay exec (optional, falls back to exec)
-                <input type="text" id="f-relay-exec" autocomplete="off" />
+            <div class="mt-3" id="relay-fields" hidden>
+              <label class="mb-3 block">relay exec (optional, falls back to exec)
+                <input class="mt-1 w-full rounded-md border border-app-border bg-app-bg px-2.5 py-1.5 text-[13px] text-app-text disabled:opacity-60" type="text" id="f-relay-exec" autocomplete="off" />
               </label>
-              <fieldset>
-                <legend>relay args (optional)</legend>
-                <div id="relay-args-list" class="args-list"></div>
-                <button type="button" class="btn small" id="add-relay-arg">+ Add arg</button>
-                <small class="hint">
-                  <code>{file}</code> is the downloaded file.
-                  <code>{src}</code>, <code>{dest}</code>, and <code>{filename}</code>
+              <fieldset class="mb-3 rounded-lg border border-app-border px-3 py-2.5">
+                <legend class="px-1 text-xs text-app-muted">relay args (optional)</legend>
+                <div id="relay-args-list" class="mb-2 flex flex-col gap-1.5"></div>
+                <button type="button" class="inline-flex items-center justify-center rounded-md border border-app-border bg-app-panel-2 px-2 py-0.5 text-xs text-app-text transition hover:bg-[#40434a]" id="add-relay-arg">+ Add arg</button>
+                <small class="mt-1 block text-[11px] text-app-muted">
+                  <code class="rounded bg-app-bg px-1 py-px text-[11px]">{file}</code> is the downloaded file.
+                  <code class="rounded bg-app-bg px-1 py-px text-[11px]">{src}</code>, <code class="rounded bg-app-bg px-1 py-px text-[11px]">{dest}</code>, and <code class="rounded bg-app-bg px-1 py-px text-[11px]">{filename}</code>
                   are supplied by the <code>relay://</code> URL and handled
                   automatically — don't add them here.
                 </small>
               </fieldset>
 
-              <label class="checkbox">
+              <label class="mb-3 flex items-center gap-2">
                 <input type="checkbox" id="f-relay-blocking" />
                 blocking (app blocks until closed)
               </label>
 
-              <label>Upload method (on completion)
-                <select id="f-upload-method">
+              <label class="mb-3 block">Upload method (on completion)
+                <select class="mt-1 w-full rounded-md border border-app-border bg-app-bg px-2.5 py-1.5 text-[13px] text-app-text" id="f-upload-method">
                   <option value="put">PUT — raw file body</option>
                   <option value="post">POST — raw file body</option>
                   <option value="multipart">POST — multipart/form-data</option>
@@ -141,39 +141,39 @@
               </label>
 
               <div id="multipart-fields" hidden>
-                <label>File field name
-                  <input type="text" id="f-file-field" placeholder="file" autocomplete="off" />
+                <label class="mb-3 block">File field name
+                  <input class="mt-1 w-full rounded-md border border-app-border bg-app-bg px-2.5 py-1.5 text-[13px] text-app-text disabled:opacity-60" type="text" id="f-file-field" placeholder="file" autocomplete="off" />
                 </label>
-                <fieldset>
-                  <legend>Additional form fields (optional)</legend>
-                  <div id="form-fields-list" class="fields-list"></div>
-                  <button type="button" class="btn small" id="add-form-field">+ Add field</button>
+                <fieldset class="mb-3 rounded-lg border border-app-border px-3 py-2.5">
+                  <legend class="px-1 text-xs text-app-muted">Additional form fields (optional)</legend>
+                  <div id="form-fields-list" class="mb-2 flex flex-col gap-1.5"></div>
+                  <button type="button" class="inline-flex items-center justify-center rounded-md border border-app-border bg-app-panel-2 px-2 py-0.5 text-xs text-app-text transition hover:bg-[#40434a]" id="add-form-field">+ Add field</button>
                 </fieldset>
               </div>
             </div>
           </div>
 
-          <div class="modal-actions">
-            <button type="button" class="btn" id="cancel-edit">Cancel</button>
-            <button type="submit" class="btn primary">Save</button>
+          <div class="mt-2 flex justify-end gap-2">
+            <button type="button" class="inline-flex items-center justify-center rounded-md border border-app-border bg-app-panel-2 px-3 py-1.5 text-[13px] text-app-text transition hover:bg-[#40434a]" id="cancel-edit">Cancel</button>
+            <button type="submit" class="inline-flex items-center justify-center rounded-md border border-app-accent bg-app-accent px-3 py-1.5 text-[13px] text-white transition hover:brightness-110">Save</button>
           </div>
         </form>
       </div>
     </div>
 
     <!-- Import-from-URL modal -->
-    <div class="modal-backdrop" id="url-modal" hidden>
-      <div class="modal small">
-        <h3>Import from URL</h3>
+    <div class="fixed inset-0 z-10 flex items-center justify-center bg-black/60" id="url-modal" hidden>
+      <div class="w-[380px] rounded-[10px] border border-app-border bg-app-panel p-5">
+        <h3 class="mb-4 mt-0 text-base font-semibold">Import from URL</h3>
         <form id="url-form">
-          <label>
+          <label class="mb-3 block">
             Configuration URL (https)
-            <input type="url" id="f-import-url" placeholder="https://example.com/apps.json" autocomplete="off" required />
+            <input class="mt-1 w-full rounded-md border border-app-border bg-app-bg px-2.5 py-1.5 text-[13px] text-app-text disabled:opacity-60" type="url" id="f-import-url" placeholder="https://example.com/apps.json" autocomplete="off" required />
           </label>
-          <p class="hint">Imported apps are merged into your current definitions; you'll be asked how to resolve any conflicts.</p>
-          <div class="modal-actions">
-            <button type="button" class="btn" id="cancel-url-import">Cancel</button>
-            <button type="submit" class="btn primary">Import</button>
+          <p class="mt-1 block text-[11px] text-app-muted">Imported apps are merged into your current definitions; you'll be asked how to resolve any conflicts.</p>
+          <div class="mt-2 flex justify-end gap-2">
+            <button type="button" class="inline-flex items-center justify-center rounded-md border border-app-border bg-app-panel-2 px-3 py-1.5 text-[13px] text-app-text transition hover:bg-[#40434a]" id="cancel-url-import">Cancel</button>
+            <button type="submit" class="inline-flex items-center justify-center rounded-md border border-app-accent bg-app-accent px-3 py-1.5 text-[13px] text-white transition hover:brightness-110">Import</button>
           </div>
         </form>
       </div>

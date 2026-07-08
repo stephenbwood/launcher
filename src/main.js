@@ -7,15 +7,45 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { readText as readClipboard } from "@tauri-apps/plugin-clipboard-manager";
 
+const TAB_BASE = "rounded-md px-3 py-1.5 text-sm text-app-muted transition-colors hover:bg-app-panel-2 hover:text-app-text";
+const TAB_ACTIVE = "bg-app-panel-2 text-app-text";
+const TAB_INACTIVE = "text-app-muted";
+const BUTTON_BASE = "inline-flex items-center justify-center rounded-md border border-app-border bg-app-panel-2 px-3 py-1.5 text-[13px] text-app-text transition hover:bg-[#40434a] disabled:cursor-not-allowed disabled:opacity-60";
+const BUTTON_SMALL = "px-2 py-0.5 text-xs";
+const BUTTON_PRIMARY = "border-app-accent bg-app-accent text-white hover:brightness-110";
+const BUTTON_DANGER = "border-[#5a3134] text-[#f4b6b6] hover:bg-app-danger hover:text-white";
+const MONO_TRUNCATE = "truncate font-mono text-xs";
+const HINT_CLASS = "mt-1 block text-[11px] text-app-muted";
+const HINT_WARN_CLASS = "mt-1 block text-[11px] text-app-warn";
+const ROW_INPUT_CLASS = "min-w-0 flex-1 rounded-md border border-app-border bg-app-bg px-2.5 py-1.5 text-[13px] text-app-text";
+const NAME_INPUT_CLASS = "w-[38%] rounded-md border border-app-border bg-app-bg px-2.5 py-1.5 text-[13px] text-app-text";
+const STATUS_COLORS = {
+  downloading: "text-app-accent",
+  editing: "text-app-accent",
+  idle: "text-app-warn",
+  uploading: "text-app-accent",
+  done: "text-app-ok",
+  error: "text-app-danger",
+  orphaned: "text-app-warn",
+};
+const LOG_STATUS_COLORS = {
+  handled: "text-app-muted",
+  launched: "text-app-ok",
+  error: "text-app-danger",
+};
+
 // ---------------------------------------------------------------------------
 // View switching
 // ---------------------------------------------------------------------------
 
 function showView(view) {
-  document.querySelectorAll(".view").forEach((el) => el.classList.remove("is-active"));
-  document.querySelectorAll(".tab").forEach((el) => el.classList.remove("is-active"));
-  document.getElementById(`view-${view}`)?.classList.add("is-active");
-  document.querySelector(`.tab[data-view="${view}"]`)?.classList.add("is-active");
+  document.querySelectorAll(".view").forEach((el) => {
+    el.hidden = el.id !== `view-${view}`;
+  });
+  document.querySelectorAll(".tab").forEach((el) => {
+    const active = el.dataset.view === view;
+    el.className = `tab ${TAB_BASE} ${active ? TAB_ACTIVE : TAB_INACTIVE}`;
+  });
   if (view === "logs") refreshLogs().catch((e) => console.error(e));
 }
 
@@ -52,7 +82,8 @@ const STATUS_ICONS = {
 
 function actionButton(label, cls, handler) {
   const b = document.createElement("button");
-  b.className = `btn small ${cls || ""}`.trim();
+  const variant = cls === "primary" ? BUTTON_PRIMARY : cls === "danger" ? BUTTON_DANGER : "";
+  b.className = `${BUTTON_BASE} ${BUTTON_SMALL} ${variant}`.trim();
   b.textContent = label;
   b.addEventListener("click", handler);
   return b;
@@ -80,7 +111,7 @@ function renderActions(td, s) {
     case "uploading":
     case "downloading": {
       const spin = document.createElement("span");
-      spin.className = "spinner";
+      spin.className = "inline-block size-4 animate-spin rounded-full border-2 border-app-border border-t-app-accent";
       add(spin);
       break;
     }
@@ -128,22 +159,26 @@ function renderSessions(sessions) {
 
   for (const s of visible) {
     const tr = document.createElement("tr");
+    tr.className = "border-b border-app-border";
 
     const file = document.createElement("td");
-    file.innerHTML = `<span class="status-icon status-${s.status}">${STATUS_ICONS[s.status] || "•"}</span> ${escapeHtml(s.filename)}`;
+    file.className = "p-2.5 align-middle";
+    file.innerHTML = `<span class="mr-1 inline-block w-5 text-center ${STATUS_COLORS[s.status] || ""}">${STATUS_ICONS[s.status] || "•"}</span> ${escapeHtml(s.filename)}`;
     tr.appendChild(file);
 
     const app = document.createElement("td");
+    app.className = "p-2.5 align-middle";
     app.textContent = s.app_name || s.app_id;
     tr.appendChild(app);
 
     const status = document.createElement("td");
+    status.className = "p-2.5 align-middle";
     status.textContent = STATUS_LABELS[s.status] || s.status;
     if (s.error) status.title = s.error;
     tr.appendChild(status);
 
     const actions = document.createElement("td");
-    actions.className = "actions";
+    actions.className = "space-x-1.5 whitespace-nowrap p-2.5 text-right align-middle";
     renderActions(actions, s);
     tr.appendChild(actions);
 
@@ -183,31 +218,33 @@ function renderLogs(logs) {
 
   for (const entry of logs) {
     const tr = document.createElement("tr");
+    tr.className = "border-b border-app-border";
 
     const time = document.createElement("td");
+    time.className = "p-2.5 align-middle";
     time.textContent = formatLogTime(entry.created_at);
     tr.appendChild(time);
 
     const uri = document.createElement("td");
-    uri.className = "log-mono";
+    uri.className = "break-words p-2.5 align-middle font-mono text-xs";
     uri.textContent = entry.raw_uri;
     uri.title = entry.raw_uri;
     tr.appendChild(uri);
 
     const status = document.createElement("td");
-    status.className = `log-status log-status-${entry.status}`;
+    status.className = `p-2.5 align-middle font-semibold ${LOG_STATUS_COLORS[entry.status] || ""}`;
     status.textContent = LOG_STATUS_LABELS[entry.status] || entry.status;
     if (entry.error) status.title = entry.error;
     tr.appendChild(status);
 
     const cli = document.createElement("td");
-    cli.className = "log-mono";
+    cli.className = "break-words p-2.5 align-middle font-mono text-xs";
     cli.textContent = entry.cli_call || "";
     cli.title = entry.cli_call || entry.error || "";
     tr.appendChild(cli);
 
     const actions = document.createElement("td");
-    actions.className = "actions";
+    actions.className = "space-x-1.5 whitespace-nowrap p-2.5 text-right align-middle";
     actions.appendChild(actionButton("Re-run", "primary", () => rerunLogEntry(entry.id)));
     tr.appendChild(actions);
 
@@ -289,24 +326,24 @@ async function renderAppList(config) {
   for (const id of ids) {
     const def = config[id];
     const li = document.createElement("li");
-    li.className = "app-row";
+    li.className = "mb-2 flex items-center justify-between gap-3 rounded-lg border border-app-border bg-app-panel px-3 py-2.5";
 
     const info = document.createElement("div");
-    info.className = "app-info";
-    const hasRelay = def.relay ? '<span class="badge">relay</span>' : "";
+    info.className = "min-w-0 flex-1 cursor-pointer overflow-hidden";
+    const hasRelay = def.relay ? '<span class="rounded-full bg-app-accent px-1.5 py-px text-[10px] uppercase tracking-wide text-white">relay</span>' : "";
     const uriExample = exampleUri(id, def);
     const commandExample = await cliPreview(def);
     const title = def.display_name
       ? `${escapeHtml(def.display_name)} [${escapeHtml(id)}]`
       : escapeHtml(id);
     info.innerHTML =
-      `<div class="app-line">` +
-        `<span class="app-id">${title}</span>` +
-        `<span class="app-exec" title="${escapeHtml(def.exec)}">${escapeHtml(def.exec)}</span>` +
+      `<div class="flex min-w-0 items-center gap-2.5">` +
+        `<span class="shrink-0 font-semibold">${title}</span>` +
+        `<span class="min-w-0 flex-1 truncate text-xs text-app-muted" title="${escapeHtml(def.exec)}">${escapeHtml(def.exec)}</span>` +
         hasRelay +
       `</div>` +
-      `<div class="app-uri" title="${escapeHtml(uriExample)}">${escapeHtml(uriExample)}</div>` +
-      `<div class="app-cli" title="${escapeHtml(commandExample)}">${escapeHtml(commandExample)}</div>`;
+      `<div class="mt-1 ${MONO_TRUNCATE} text-app-muted" title="${escapeHtml(uriExample)}">${escapeHtml(uriExample)}</div>` +
+      `<div class="mt-1 ${MONO_TRUNCATE} text-app-text" title="${escapeHtml(commandExample)}">${escapeHtml(commandExample)}</div>`;
     info.addEventListener("click", () => openForm(id));
     li.appendChild(info);
 
@@ -344,12 +381,12 @@ async function cliPreview(def) {
 
 function addArgRow(container, value = "") {
   const row = document.createElement("div");
-  row.className = "arg-row";
+  row.className = "flex gap-1.5";
   const input = document.createElement("input");
   input.type = "text";
   input.value = value;
   input.placeholder = "literal or {placeholder}";
-  input.className = "arg-input";
+  input.className = `arg-input ${ROW_INPUT_CLASS}`;
   const rm = actionButton("✕", "danger", () => row.remove());
   row.append(input, rm);
   container.appendChild(row);
@@ -365,17 +402,17 @@ function readArgs(container) {
 
 function addFieldRow(container, name = "", value = "") {
   const row = document.createElement("div");
-  row.className = "field-row";
+  row.className = "field-row flex gap-1.5";
   const nameInput = document.createElement("input");
   nameInput.type = "text";
   nameInput.value = name;
   nameInput.placeholder = "name";
-  nameInput.className = "field-name";
+  nameInput.className = `field-name ${NAME_INPUT_CLASS}`;
   const valueInput = document.createElement("input");
   valueInput.type = "text";
   valueInput.value = value;
   valueInput.placeholder = "value";
-  valueInput.className = "field-value";
+  valueInput.className = `field-value ${ROW_INPUT_CLASS}`;
   const rm = actionButton("✕", "danger", () => row.remove());
   row.append(nameInput, valueInput, rm);
   container.appendChild(row);
@@ -639,7 +676,7 @@ document.getElementById("f-exec").addEventListener("blur", async (e) => {
   }
   const exists = await invoke("exec_exists", { path });
   hint.textContent = exists ? "" : "⚠ path not found — you can still save (app may be installed later)";
-  hint.className = exists ? "hint" : "hint warn";
+  hint.className = exists ? HINT_CLASS : HINT_WARN_CLASS;
 });
 
 function escapeHtml(str) {
