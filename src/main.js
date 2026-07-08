@@ -294,7 +294,8 @@ async function renderAppList(config) {
     const info = document.createElement("div");
     info.className = "app-info";
     const hasRelay = def.relay ? '<span class="badge">relay</span>' : "";
-    const example = await cliPreview(def);
+    const uriExample = exampleUri(id, def);
+    const commandExample = await cliPreview(def);
     const title = def.display_name
       ? `${escapeHtml(def.display_name)} [${escapeHtml(id)}]`
       : escapeHtml(id);
@@ -304,7 +305,8 @@ async function renderAppList(config) {
         `<span class="app-exec" title="${escapeHtml(def.exec)}">${escapeHtml(def.exec)}</span>` +
         hasRelay +
       `</div>` +
-      `<div class="app-uri" title="${escapeHtml(example)}">${escapeHtml(example)}</div>`;
+      `<div class="app-uri" title="${escapeHtml(uriExample)}">${escapeHtml(uriExample)}</div>` +
+      `<div class="app-cli" title="${escapeHtml(commandExample)}">${escapeHtml(commandExample)}</div>`;
     info.addEventListener("click", () => openForm(id));
     li.appendChild(info);
 
