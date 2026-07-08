@@ -7,10 +7,11 @@ import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialo
 import { readText as readClipboard } from "@tauri-apps/plugin-clipboard-manager";
 
 const TAB_BASE = "rounded-md px-3 py-1.5 text-sm text-app-muted transition-colors hover:bg-app-panel-2 hover:text-app-text";
-const BUTTON_BASE = "inline-flex items-center justify-center rounded-md border border-app-border bg-app-panel-2 px-3 py-1.5 text-[13px] text-app-text transition hover:bg-[#40434a] disabled:cursor-not-allowed disabled:opacity-60";
+const BUTTON_BASE = "inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-[13px] transition disabled:cursor-not-allowed disabled:opacity-60";
+const BUTTON_DEFAULT = "border-app-border bg-app-panel-2 text-app-text hover:bg-app-button-hover";
 const BUTTON_SMALL = "px-2 py-0.5 text-xs";
-const BUTTON_PRIMARY = "border-app-accent bg-app-accent text-white hover:brightness-110";
-const BUTTON_DANGER = "border-[#5a3134] text-[#f4b6b6] hover:bg-app-danger hover:text-white";
+const BUTTON_PRIMARY = "border-app-accent bg-app-accent text-app-on-accent hover:brightness-110";
+const BUTTON_DANGER = "border-app-danger bg-app-danger text-app-on-accent hover:brightness-110";
 const INPUT_CLASS = "mt-1 w-full rounded-md border border-app-border bg-app-bg px-2.5 py-1.5 text-[13px] text-app-text disabled:opacity-60";
 const INLINE_INPUT_CLASS = "min-w-0 flex-1 rounded-md border border-app-border bg-app-bg px-2.5 py-1.5 text-[13px] text-app-text";
 const HINT_CLASS = "mt-1 block text-[11px] text-app-muted";
@@ -63,7 +64,7 @@ const LOG_STATUS_COLORS = {
 
 function Button({ children, className = "", size = "normal", variant = "default", ...props }) {
   const variantClass =
-    variant === "primary" ? BUTTON_PRIMARY : variant === "danger" ? BUTTON_DANGER : "";
+    variant === "primary" ? BUTTON_PRIMARY : variant === "danger" ? BUTTON_DANGER : BUTTON_DEFAULT;
   const sizeClass = size === "small" ? BUTTON_SMALL : "";
   return (
     <button className={`${BUTTON_BASE} ${sizeClass} ${variantClass} ${className}`.trim()} {...props}>
@@ -413,7 +414,7 @@ function SettingsView({ appRows, deleteApp, exportConfig, importConfig, openForm
                     {def.exec}
                   </span>
                   {def.relay && (
-                    <span className="rounded-full bg-app-accent px-1.5 py-px text-[10px] uppercase tracking-wide text-white">
+                    <span className="rounded-full bg-app-accent px-1.5 py-px text-[10px] uppercase tracking-wide text-app-on-accent">
                       relay
                     </span>
                   )}
@@ -573,7 +574,7 @@ function AppFormModal({ apps, editingId, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/60">
+    <div className="fixed inset-0 z-10 flex items-center justify-center bg-app-overlay/60">
       <div className="max-h-[88vh] w-[480px] overflow-y-auto rounded-[10px] border border-app-border bg-app-panel p-5">
         <h3 className="mb-4 mt-0 text-base font-semibold">{isEdit ? `Edit "${editingId}"` : "Add Application"}</h3>
         <form onSubmit={submit}>
@@ -715,7 +716,7 @@ function FieldEditor({ fields, setFields }) {
 
 function UrlImportModal({ value, onChange, onClose, onSubmit }) {
   return (
-    <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/60">
+    <div className="fixed inset-0 z-10 flex items-center justify-center bg-app-overlay/60">
       <div className="w-[380px] rounded-[10px] border border-app-border bg-app-panel p-5">
         <h3 className="mb-4 mt-0 text-base font-semibold">Import from URL</h3>
         <form onSubmit={onSubmit}>
