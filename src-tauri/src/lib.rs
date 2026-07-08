@@ -33,9 +33,11 @@ pub fn run() {
             log::info!("second instance argv: {argv:?}");
             if let Some(url) = dispatch::url_from_args(argv) {
                 dispatch::handle_url(app, &url);
+            } else {
+                // A plain second launch should surface the running app, but
+                // protocol dispatch must preserve the current window state.
+                tray::open_main_current_tab(app);
             }
-            // Surface the running instance regardless.
-            tray::open_main(app, "queue");
         }))
         // §4.2 macOS Apple Event delivery + runtime deep-link handling.
         .plugin(tauri_plugin_deep_link::init())
