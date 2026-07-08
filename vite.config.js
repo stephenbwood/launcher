@@ -1,10 +1,11 @@
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 // Tauri expects a fixed dev-server port and a relative base so the built
 // assets resolve correctly when loaded from the app's file:// context.
 export default defineConfig({
-  plugins: [tailwindcss()],
+  plugins: [react(), tailwindcss()],
   clearScreen: false,
   base: "./",
   server: {
