@@ -128,7 +128,7 @@ impl AppDefinition {
 }
 
 /// The whole config: app-id -> definition. `BTreeMap` keeps a stable order in
-/// the on-disk JSON and in the Settings list.
+/// the on-disk JSON and in the Handlers list.
 pub type AppConfig = BTreeMap<String, AppDefinition>;
 
 /// Load the config from disk. A missing file yields an empty config (fresh install).

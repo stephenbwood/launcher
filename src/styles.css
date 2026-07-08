@@ -1,19 +1,58 @@
 @import "tailwindcss";
 
 @theme {
-    --color-app-bg: var(--color-neutral-900);
-    --color-app-panel: var(--color-neutral-800);
-    --color-app-panel-2: var(--color-neutral-700);
-    --color-app-border: var(--color-neutral-700);
-    --color-app-text: var(--color-neutral-200);
-    --color-app-muted: var(--color-neutral-400);
-    --color-app-accent: var(--color-blue-600);
-    --color-app-on-accent: var(--color-white);
-    --color-app-button-hover: var(--color-neutral-600);
-    --color-app-danger: var(--color-red-500);
-    --color-app-danger-border: var(--color-red-950);
-    --color-app-danger-text: var(--color-red-200);
-    --color-app-ok: var(--color-green-500);
-    --color-app-warn: var(--color-orange-400);
-    --color-app-overlay: var(--color-black);
+    --color-app-bg: var(--app-bg);
+    --color-app-panel: var(--app-panel);
+    --color-app-panel-2: var(--app-panel-2);
+    --color-app-border: var(--app-border);
+    --color-app-text: var(--app-text);
+    --color-app-muted: var(--app-muted);
+    --color-app-accent: var(--app-accent);
+    --color-app-on-accent: var(--app-on-accent);
+    --color-app-button-hover: var(--app-button-hover);
+    --color-app-danger: var(--app-danger);
+    --color-app-danger-border: var(--app-danger-border);
+    --color-app-danger-text: var(--app-danger-text);
+    --color-app-ok: var(--app-ok);
+    --color-app-warn: var(--app-warn);
+    --color-app-overlay: var(--app-overlay);
+}
+
+:root,
+:root[data-theme="light"] {
+    color-scheme: light;
+    --app-bg: var(--color-neutral-50);
+    --app-panel: var(--color-white);
+    --app-panel-2: var(--color-neutral-200);
+    --app-border: var(--color-neutral-300);
+    --app-text: var(--color-neutral-900);
+    --app-muted: var(--color-neutral-500);
+    --app-accent: var(--color-blue-600);
+    --app-on-accent: var(--color-white);
+    --app-button-hover: var(--color-neutral-300);
+    --app-danger: var(--color-red-500);
+    --app-danger-border: var(--color-red-600);
+    --app-danger-text: var(--color-red-700);
+    --app-ok: var(--color-green-600);
+    --app-warn: var(--color-orange-500);
+    --app-overlay: var(--color-black);
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --app-bg: var(--color-neutral-900);
+    --app-panel: var(--color-neutral-800);
+    --app-panel-2: var(--color-neutral-700);
+    --app-border: var(--color-neutral-700);
+    --app-text: var(--color-neutral-200);
+    --app-muted: var(--color-neutral-400);
+    --app-accent: var(--color-blue-600);
+    --app-on-accent: var(--color-white);
+    --app-button-hover: var(--color-neutral-600);
+    --app-danger: var(--color-red-500);
+    --app-danger-border: var(--color-red-950);
+    --app-danger-text: var(--color-red-200);
+    --app-ok: var(--color-green-500);
+    --app-warn: var(--color-orange-400);
+    --app-overlay: var(--color-black);
 }

@@ -12,7 +12,7 @@ use crate::relay::{self, Session};
 use crate::state::AppState;
 use crate::substitute;
 
-// ---- Settings screen: app definitions CRUD (§7.1) ----
+// ---- Handlers screen: app definitions CRUD (§7.1) ----
 
 /// List all registered app definitions.
 #[tauri::command]
@@ -176,7 +176,7 @@ fn validate(cfg: &AppConfig) -> AppResult<()> {
     Ok(())
 }
 
-/// Non-fatal existence check for the Settings edit form (§7.1).
+/// Non-fatal existence check for the Handlers edit form (§7.1).
 #[tauri::command]
 pub fn exec_exists(path: String) -> bool {
     if path.trim().is_empty() {
