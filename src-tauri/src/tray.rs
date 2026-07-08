@@ -61,7 +61,8 @@ fn build_menu(
 ) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
     let mut b = MenuBuilder::new(app)
         .text("open-queue", "Relay Queue")
-        .text("open-settings", "Settings…");
+        .text("open-settings", "Settings")
+        .text("open-logs", "Logs");
 
     let active: Vec<&Session> = sessions
         .iter()
@@ -101,6 +102,7 @@ fn on_menu(app: &AppHandle, id: &str) {
         "quit" => app.exit(0),
         "open-queue" => open_main(app, "queue"),
         "open-settings" => open_main(app, "settings"),
+        "open-logs" => open_main(app, "logs"),
         other if other.starts_with("upload:") => {
             let sid = other.trim_start_matches("upload:").to_string();
             let app = app.clone();
