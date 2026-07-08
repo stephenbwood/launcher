@@ -25,14 +25,14 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
         .menu(&menu)
         .on_menu_event(|app, event| on_menu(app, event.id().as_ref()))
         .on_tray_icon_event(|tray, event| {
-            // Left click opens the Relay Queue (default view, §7.2).
+            // Left click opens the app without changing the selected tab.
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,
                 button_state: MouseButtonState::Up,
                 ..
             } = event
             {
-                open_main(tray.app_handle(), "queue");
+                open_main_current_tab(tray.app_handle());
             }
         })
         .build(app)?;
@@ -74,10 +74,7 @@ fn build_menu(
             let label = format!("{}  —  {}", s.filename, status_label(s.status));
             b = b.text(format!("open-queue-for:{}", s.id), label);
             // Offer the quick "Upload & Finish" for sessions where it applies.
-            if matches!(
-                s.status,
-                SessionStatus::Editing | SessionStatus::Idle
-            ) {
+            if matches!(s.status, SessionStatus::Editing | SessionStatus::Idle) {
                 b = b.text(format!("upload:{}", s.id), "    ↳ Upload & Finish");
             }
         }
@@ -107,7 +104,10 @@ fn on_menu(app: &AppHandle, id: &str) {
         other if other.starts_with("upload:") => {
             let sid = other.trim_start_matches("upload:").to_string();
             let app = app.clone();
-            let state = app.state::<std::sync::Arc<crate::state::AppState>>().inner().clone();
+            let state = app
+                .state::<std::sync::Arc<crate::state::AppState>>()
+                .inner()
+                .clone();
             tauri::async_runtime::spawn(async move {
                 let _ = crate::relay::upload_finish(app, state, sid).await;
             });
@@ -117,8 +117,8 @@ fn on_menu(app: &AppHandle, id: &str) {
     }
 }
 
-/// Show + focus the main window and ask the frontend to switch to `view`.
-pub fn open_main(app: &AppHandle, view: &str) {
+/// Show + focus the main window without changing the frontend's selected tab.
+pub fn open_main_current_tab(app: &AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
         if let Some(state) = app.try_state::<std::sync::Arc<crate::state::AppState>>() {
             if let Err(e) = state
@@ -133,6 +133,13 @@ pub fn open_main(app: &AppHandle, view: &str) {
         let _ = win.unminimize();
         let _ = win.show();
         let _ = win.set_focus();
+    }
+}
+
+/// Show + focus the main window and ask the frontend to switch to `view`.
+pub fn open_main(app: &AppHandle, view: &str) {
+    open_main_current_tab(app);
+    if let Some(win) = app.get_webview_window("main") {
         let _ = win.emit("navigate", view);
     }
 }
