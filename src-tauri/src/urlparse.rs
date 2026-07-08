@@ -131,7 +131,8 @@ mod tests {
 
     #[test]
     fn parses_run_with_named_and_positional() {
-        let route = parse("launcher://run/vscode?file=/path/to/file.txt&arg=--wait&arg=-n").unwrap();
+        let route =
+            parse("launcher://run/vscode?file=/path/to/file.txt&arg=--wait&arg=-n").unwrap();
         match route {
             Route::Run {
                 app_id,
@@ -148,9 +149,10 @@ mod tests {
 
     #[test]
     fn parses_relay() {
-        let route =
-            parse("launcher://relay/word?src=https://a/get&dest=https://b/put&filename=report.docx")
-                .unwrap();
+        let route = parse(
+            "launcher://relay/word?src=https://a/get&dest=https://b/put&filename=report.docx",
+        )
+        .unwrap();
         match route {
             Route::Relay {
                 app_id,
@@ -169,10 +171,9 @@ mod tests {
 
     #[test]
     fn strips_traversal_from_filename() {
-        let route = parse(
-            "launcher://relay/word?src=https://a&dest=https://b&filename=../../etc/passwd",
-        )
-        .unwrap();
+        let route =
+            parse("launcher://relay/word?src=https://a&dest=https://b&filename=../../etc/passwd")
+                .unwrap();
         match route {
             Route::Relay { filename, .. } => {
                 assert_eq!(filename, "passwd");

@@ -121,7 +121,9 @@ impl AppDefinition {
 
     /// Display name for UI, falling back to a caller-supplied id.
     pub fn display(&self, app_id: &str) -> String {
-        self.display_name.clone().unwrap_or_else(|| app_id.to_string())
+        self.display_name
+            .clone()
+            .unwrap_or_else(|| app_id.to_string())
     }
 }
 

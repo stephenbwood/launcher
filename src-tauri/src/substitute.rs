@@ -100,12 +100,7 @@ mod tests {
     #[test]
     fn substitutes_named_within_token() {
         let template = vec!["--out={dir}/result".to_string(), "{file}".to_string()];
-        let argv = build_argv(
-            &template,
-            Some("/f"),
-            &named(&[("dir", "/o")]),
-            &[],
-        );
+        let argv = build_argv(&template, Some("/f"), &named(&[("dir", "/o")]), &[]);
         assert_eq!(argv, vec!["--out=/o/result", "/f"]);
     }
 

@@ -137,4 +137,3 @@ mod tests {
             .should_handle_inbound_uri_at("launcher://run/b", now + Duration::from_millis(100)));
     }
 }
-
