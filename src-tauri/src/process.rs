@@ -19,18 +19,20 @@ impl SpawnCommand {
     }
 
     fn for_launch(exec: &str, argv: &[String], wait: bool) -> Self {
+        let argv = normalize_argv(argv);
+
         #[cfg(target_os = "macos")]
         {
-            if is_app_bundle_path(exec) {
+            if let Some(app_bundle) = app_bundle_path(exec) {
                 let mut args = Vec::new();
                 if wait {
                     args.push("-W".to_string());
                 }
                 args.push("-a".to_string());
-                args.push(exec.to_string());
+                args.push(app_bundle.to_string_lossy().to_string());
                 if !argv.is_empty() {
                     args.push("--args".to_string());
-                    args.extend(argv.iter().cloned());
+                    args.extend(argv);
                 }
                 return Self {
                     program: "/usr/bin/open".to_string(),
@@ -41,7 +43,7 @@ impl SpawnCommand {
 
         Self {
             program: exec.to_string(),
-            args: argv.to_vec(),
+            args: argv,
         }
     }
 }
@@ -80,12 +82,38 @@ fn which_on_path(cmd: &str) -> Option<PathBuf> {
     None
 }
 
+fn normalize_argv(argv: &[String]) -> Vec<String> {
+    argv.iter().map(|arg| normalize_cli_arg(arg)).collect()
+}
+
+fn normalize_cli_arg(arg: &str) -> String {
+    let Some(first) = arg.chars().next() else {
+        return String::new();
+    };
+    let replacement = match first {
+        // Common smart punctuation substitutions for double-hyphen CLI options.
+        '\u{2013}' | '\u{2014}' | '\u{2015}' => "--",
+        // Common single-hyphen variants.
+        '\u{2010}' | '\u{2011}' | '\u{2012}' | '\u{2212}' => "-",
+        _ => return arg.to_string(),
+    };
+    let rest = &arg[first.len_utf8()..];
+    format!("{replacement}{rest}")
+}
+
 #[cfg(target_os = "macos")]
-fn is_app_bundle_path(exec: &str) -> bool {
-    Path::new(exec)
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .is_some_and(|ext| ext.eq_ignore_ascii_case("app"))
+fn app_bundle_path(exec: &str) -> Option<PathBuf> {
+    let path = Path::new(exec);
+    for ancestor in path.ancestors() {
+        let is_app = ancestor
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("app"));
+        if is_app {
+            return Some(ancestor.to_path_buf());
+        }
+    }
+    None
 }
 
 #[cfg(test)]
@@ -101,6 +129,19 @@ mod tests {
             SpawnCommand {
                 program: "code".into(),
                 args: vec!["--new-window".into()]
+            }
+        );
+    }
+
+    #[test]
+    fn leading_smart_dash_cli_args_are_normalized() {
+        let cmd = SpawnCommand::new("clp", &["—url".into(), "–verbose".into(), "value".into()]);
+
+        assert_eq!(
+            cmd,
+            SpawnCommand {
+                program: "clp".into(),
+                args: vec!["--url".into(), "--verbose".into(), "value".into()]
             }
         );
     }
@@ -123,6 +164,36 @@ mod tests {
                     "--args".into(),
                     "--new-window".into(),
                     "/tmp/file.txt".into()
+                ]
+            }
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn mac_app_bundle_executable_uses_open_with_bundle() {
+        let cmd = SpawnCommand::new(
+            "/Applications/ColorLabPro.app/Contents/MacOS/clp",
+            &[
+                "handoff".into(),
+                "open".into(),
+                "--url".into(),
+                "https://example.test".into(),
+            ],
+        );
+
+        assert_eq!(
+            cmd,
+            SpawnCommand {
+                program: "/usr/bin/open".into(),
+                args: vec![
+                    "-a".into(),
+                    "/Applications/ColorLabPro.app".into(),
+                    "--args".into(),
+                    "handoff".into(),
+                    "open".into(),
+                    "--url".into(),
+                    "https://example.test".into()
                 ]
             }
         );
