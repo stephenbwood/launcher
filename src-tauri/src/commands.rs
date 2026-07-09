@@ -8,6 +8,7 @@ use tauri::{AppHandle, State};
 use crate::config::{self, AppConfig, AppDefinition};
 use crate::error::{AppError, AppResult};
 use crate::logs::format_cli_call;
+use crate::process;
 use crate::relay::{self, Session};
 use crate::state::AppState;
 use crate::substitute;
@@ -179,36 +180,7 @@ fn validate(cfg: &AppConfig) -> AppResult<()> {
 /// Non-fatal existence check for the Handlers edit form (§7.1).
 #[tauri::command]
 pub fn exec_exists(path: String) -> bool {
-    if path.trim().is_empty() {
-        return false;
-    }
-    // Absolute path that resolves, or a bare command name found on PATH.
-    if std::path::Path::new(&path).exists() {
-        return true;
-    }
-    which_on_path(&path).is_some()
-}
-
-fn which_on_path(cmd: &str) -> Option<std::path::PathBuf> {
-    let paths = std::env::var_os("PATH")?;
-    let exts: Vec<String> = if cfg!(windows) {
-        std::env::var("PATHEXT")
-            .unwrap_or_else(|_| ".EXE;.BAT;.CMD".into())
-            .split(';')
-            .map(|s| s.to_string())
-            .collect()
-    } else {
-        vec![String::new()]
-    };
-    for dir in std::env::split_paths(&paths) {
-        for ext in &exts {
-            let candidate = dir.join(format!("{cmd}{ext}"));
-            if candidate.is_file() {
-                return Some(candidate);
-            }
-        }
-    }
-    None
+    process::executable_exists(&path)
 }
 
 // ---- Relay Queue screen: live session list + actions (§7.2) ----
@@ -295,8 +267,9 @@ pub fn rerun_log_entry(
 
     if let Some(exec) = entry.exec {
         let argv = entry.argv.unwrap_or_default();
-        std::process::Command::new(&exec)
-            .args(&argv)
+        let command = process::SpawnCommand::new(&exec, &argv);
+        std::process::Command::new(&command.program)
+            .args(&command.args)
             .spawn()
             .map_err(|e| AppError::Other(format!("failed to launch '{exec}': {e}")))?;
         return Ok(());

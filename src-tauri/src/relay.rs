@@ -16,6 +16,7 @@ use time::OffsetDateTime;
 
 use crate::config;
 use crate::error::{AppError, AppResult};
+use crate::process::SpawnCommand;
 use crate::state::AppState;
 use crate::substitute;
 
@@ -294,25 +295,33 @@ fn spawn_editor_and_watch(
 
     let file = local_path.to_string_lossy().to_string();
     let argv = substitute::build_argv(&template, Some(&file), &HashMap::new(), &[]);
+    let command = if blocking {
+        SpawnCommand::blocking(&exec, &argv)
+    } else {
+        SpawnCommand::new(&exec, &argv)
+    };
     if let Some(log_id) = log_id {
-        if let Err(e) = state
-            .logs
-            .lock()
-            .expect("logs lock poisoned")
-            .mark_cli(log_id, &exec, &argv)
-        {
+        if let Err(e) = state.logs.lock().expect("logs lock poisoned").mark_cli(
+            log_id,
+            &command.program,
+            &command.args,
+        ) {
             log::warn!("failed to update launch log {log_id}: {e}");
         }
     }
 
-    log::info!("relay spawn: {exec} {argv:?} (blocking={blocking})");
+    log::info!(
+        "relay spawn: {} {:?} (blocking={blocking})",
+        command.program,
+        command.args
+    );
 
     let mut tasks: Vec<tokio::task::JoinHandle<()>> = Vec::new();
 
     if blocking {
         // Keep the child so we can await its exit (§6.2 signal 1).
-        let child = tokio::process::Command::new(&exec)
-            .args(&argv)
+        let child = tokio::process::Command::new(&command.program)
+            .args(&command.args)
             .spawn()
             .map_err(|e| AppError::Other(format!("failed to launch '{exec}': {e}")))?;
 
@@ -328,8 +337,8 @@ fn spawn_editor_and_watch(
         }));
     } else {
         // Fire-and-forget; completion relies on idle-debounce + manual (§6.2).
-        std::process::Command::new(&exec)
-            .args(&argv)
+        std::process::Command::new(&command.program)
+            .args(&command.args)
             .spawn()
             .map_err(|e| AppError::Other(format!("failed to launch '{exec}': {e}")))?;
     }

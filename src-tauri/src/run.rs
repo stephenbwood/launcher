@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use crate::config;
 use crate::error::{AppError, AppResult};
+use crate::process::SpawnCommand;
 use crate::state::AppState;
 use crate::substitute;
 
@@ -25,22 +26,22 @@ pub fn launch(
     // `run://` always uses the base exec/args (§3).
     let file = named.get("file").map(|s| s.as_str());
     let argv = substitute::build_argv(&def.args, file, named, positional);
+    let command = SpawnCommand::new(&def.exec, &argv);
 
     if let Some(log_id) = log_id {
-        if let Err(e) = state
-            .logs
-            .lock()
-            .expect("logs lock poisoned")
-            .mark_cli(log_id, &def.exec, &argv)
-        {
+        if let Err(e) = state.logs.lock().expect("logs lock poisoned").mark_cli(
+            log_id,
+            &command.program,
+            &command.args,
+        ) {
             log::warn!("failed to update launch log {log_id}: {e}");
         }
     }
 
-    log::info!("run: {} {:?}", def.exec, argv);
+    log::info!("run: {} {:?}", command.program, command.args);
 
-    std::process::Command::new(&def.exec)
-        .args(&argv)
+    std::process::Command::new(&command.program)
+        .args(&command.args)
         .spawn()
         .map_err(|e| AppError::Other(format!("failed to launch '{}': {e}", def.exec)))?;
 

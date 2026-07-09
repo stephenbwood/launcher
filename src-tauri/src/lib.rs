@@ -6,6 +6,7 @@ mod config;
 mod dispatch;
 mod error;
 mod logs;
+mod process;
 mod registration;
 mod relay;
 mod run;
