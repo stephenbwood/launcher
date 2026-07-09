@@ -23,7 +23,14 @@ impl SpawnCommand {
 
         #[cfg(target_os = "macos")]
         {
-            if let Some(app_bundle) = app_bundle_path(exec) {
+            if let Some(program) = app_bundle_executable_path(exec) {
+                return Self {
+                    program: program.to_string_lossy().to_string(),
+                    args: argv,
+                };
+            }
+
+            if let Some(app_bundle) = exact_app_bundle_path(exec) {
                 let mut args = Vec::new();
                 if wait {
                     args.push("-W".to_string());
@@ -102,18 +109,60 @@ fn normalize_cli_arg(arg: &str) -> String {
 }
 
 #[cfg(target_os = "macos")]
-fn app_bundle_path(exec: &str) -> Option<PathBuf> {
+fn exact_app_bundle_path(exec: &str) -> Option<PathBuf> {
     let path = Path::new(exec);
-    for ancestor in path.ancestors() {
-        let is_app = ancestor
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("app"));
-        if is_app {
-            return Some(ancestor.to_path_buf());
-        }
+    if is_app_bundle(path) {
+        return Some(path.to_path_buf());
     }
     None
+}
+
+#[cfg(target_os = "macos")]
+fn app_bundle_executable_path(exec: &str) -> Option<PathBuf> {
+    let app_bundle = exact_app_bundle_path(exec)?;
+    let executable = bundle_executable_name(&app_bundle)
+        .and_then(|name| existing_bundle_executable(&app_bundle, &name))
+        .or_else(|| single_bundle_executable(&app_bundle))?;
+    Some(executable)
+}
+
+#[cfg(target_os = "macos")]
+fn is_app_bundle(path: &Path) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("app"))
+}
+
+#[cfg(target_os = "macos")]
+fn bundle_executable_name(app_bundle: &Path) -> Option<String> {
+    let info = plist::Value::from_file(app_bundle.join("Contents/Info.plist")).ok()?;
+    info.as_dictionary()?
+        .get("CFBundleExecutable")?
+        .as_string()
+        .map(ToString::to_string)
+}
+
+#[cfg(target_os = "macos")]
+fn existing_bundle_executable(app_bundle: &Path, name: &str) -> Option<PathBuf> {
+    let executable = app_bundle.join("Contents/MacOS").join(name);
+    executable.is_file().then_some(executable)
+}
+
+#[cfg(target_os = "macos")]
+fn single_bundle_executable(app_bundle: &Path) -> Option<PathBuf> {
+    let macos_dir = app_bundle.join("Contents/MacOS");
+    let mut executables = Vec::new();
+    for entry in std::fs::read_dir(macos_dir).ok()? {
+        let path = entry.ok()?.path();
+        if path.is_file() {
+            executables.push(path);
+        }
+    }
+    if executables.len() == 1 {
+        executables.pop()
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -148,30 +197,24 @@ mod tests {
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn mac_app_bundle_uses_open_with_args() {
-        let cmd = SpawnCommand::new(
-            "/Applications/Visual Studio Code.app",
-            &["--new-window".into(), "/tmp/file.txt".into()],
-        );
+    fn mac_app_bundle_uses_bundle_executable_with_args() {
+        let app = fixture_app_bundle("bundle-args", "clp");
+        let exec = app.path.to_string_lossy().to_string();
+        let program = app.executable.to_string_lossy().to_string();
+        let cmd = SpawnCommand::new(&exec, &["--new-window".into(), "/tmp/file.txt".into()]);
 
         assert_eq!(
             cmd,
             SpawnCommand {
-                program: "/usr/bin/open".into(),
-                args: vec![
-                    "-a".into(),
-                    "/Applications/Visual Studio Code.app".into(),
-                    "--args".into(),
-                    "--new-window".into(),
-                    "/tmp/file.txt".into()
-                ]
+                program,
+                args: vec!["--new-window".into(), "/tmp/file.txt".into()]
             }
         );
     }
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn mac_app_bundle_executable_uses_open_with_bundle() {
+    fn mac_app_bundle_executable_spawns_directly() {
         let cmd = SpawnCommand::new(
             "/Applications/ColorLabPro.app/Contents/MacOS/clp",
             &[
@@ -185,15 +228,12 @@ mod tests {
         assert_eq!(
             cmd,
             SpawnCommand {
-                program: "/usr/bin/open".into(),
+                program: "/Applications/ColorLabPro.app/Contents/MacOS/clp".into(),
                 args: vec![
-                    "-a".into(),
-                    "/Applications/ColorLabPro.app".into(),
-                    "--args".into(),
                     "handoff".into(),
                     "open".into(),
                     "--url".into(),
-                    "https://example.test".into()
+                    "https://example.test".into(),
                 ]
             }
         );
@@ -201,19 +241,61 @@ mod tests {
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn blocking_mac_app_bundle_waits_for_app() {
-        let cmd = SpawnCommand::blocking("/Applications/TextEdit.app", &[]);
+    fn blocking_mac_app_bundle_uses_bundle_executable() {
+        let app = fixture_app_bundle("blocking-bundle", "TextEdit");
+        let exec = app.path.to_string_lossy().to_string();
+        let program = app.executable.to_string_lossy().to_string();
+        let cmd = SpawnCommand::blocking(&exec, &[]);
 
         assert_eq!(
             cmd,
             SpawnCommand {
-                program: "/usr/bin/open".into(),
-                args: vec![
-                    "-W".into(),
-                    "-a".into(),
-                    "/Applications/TextEdit.app".into()
-                ]
+                program,
+                args: vec![]
             }
         );
+    }
+
+    #[cfg(target_os = "macos")]
+    struct FixtureApp {
+        path: PathBuf,
+        executable: PathBuf,
+    }
+
+    #[cfg(target_os = "macos")]
+    impl Drop for FixtureApp {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.path);
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    fn fixture_app_bundle(name: &str, executable_name: &str) -> FixtureApp {
+        let path = std::env::temp_dir().join(format!(
+            "launcher-process-test-{name}-{}.app",
+            std::process::id()
+        ));
+        let contents = path.join("Contents");
+        let macos = contents.join("MacOS");
+        std::fs::create_dir_all(&macos).unwrap();
+        std::fs::write(
+            contents.join("Info.plist"),
+            format!(
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleExecutable</key>
+  <string>{executable_name}</string>
+</dict>
+</plist>
+"#
+            ),
+        )
+        .unwrap();
+        let executable = macos.join(executable_name);
+        std::fs::write(&executable, "").unwrap();
+
+        FixtureApp { path, executable }
     }
 }
