@@ -69,6 +69,13 @@ pub fn run() {
             }
         })
         .setup(|app| {
+            // macOS: menu-bar / tray presence only — no Dock icon or Cmd-Tab
+            // entry. Open-URL events then won't activate a Regular Dock app,
+            // so a tray-hidden window stays hidden when a launcher:// URL
+            // arrives (warm path already skips show/focus in dispatch).
+            #[cfg(target_os = "macos")]
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
             let handle = app.handle().clone();
 
             // ---- paths & shared state ----
