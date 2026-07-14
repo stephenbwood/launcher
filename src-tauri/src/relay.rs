@@ -307,9 +307,8 @@ fn spawn_editor_and_watch(
             &command.args,
         ) {
             log::warn!("failed to update launch log {log_id}: {e}");
-        } else {
-            crate::logs::emit_update(app, state);
         }
+        crate::logs::emit_update(app, state);
     }
 
     log::info!(
@@ -338,11 +337,16 @@ fn spawn_editor_and_watch(
             complete_and_upload(app2, state2, id2).await;
         }));
     } else {
-        // Fire-and-forget; completion relies on idle-debounce + manual (§6.2).
-        std::process::Command::new(&command.program)
-            .args(&command.args)
-            .spawn()
-            .map_err(|e| AppError::Other(format!("failed to launch '{exec}': {e}")))?;
+        // Fire-and-forget on a detached thread so Launch Services cannot stall
+        // the relay pipeline; completion relies on idle-debounce + manual (§6.2).
+        let program = command.program.clone();
+        let args = command.args.clone();
+        let exec_label = exec.clone();
+        std::thread::spawn(move || {
+            if let Err(e) = std::process::Command::new(&program).args(&args).spawn() {
+                log::warn!("failed to launch '{exec_label}': {e}");
+            }
+        });
     }
 
     // Filesystem idle-debounce watcher (§6.2 signal 2). We watch the session

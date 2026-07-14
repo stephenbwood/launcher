@@ -266,11 +266,14 @@ pub fn rerun_log_entry(
 
     if let Some(exec) = entry.exec {
         let argv = entry.argv.unwrap_or_default();
-        let command = process::SpawnCommand::new(&exec, &argv);
-        std::process::Command::new(&command.program)
-            .args(&command.args)
-            .spawn()
-            .map_err(|e| AppError::Other(format!("failed to launch '{exec}': {e}")))?;
+        let command = process::resolve_spawn(&exec, &argv);
+        let program = command.program.clone();
+        let args = command.args.clone();
+        std::thread::spawn(move || {
+            if let Err(e) = std::process::Command::new(&program).args(&args).spawn() {
+                log::warn!("failed to re-run launch '{exec}': {e}");
+            }
+        });
         return Ok(());
     }
 

@@ -1,6 +1,6 @@
 [package]
 name = "launcher"
-version = "0.3.3"
+version = "0.3.7"
 description = "Protocol handler application launcher (launcher:// scheme)"
 authors = ["you"]
 edition = "2021"
@@ -23,7 +23,6 @@ tauri-plugin-clipboard-manager = "2"
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-plist = "1.9"
 
 # URL parsing for the launcher:// scheme (§2).
 url = "2"

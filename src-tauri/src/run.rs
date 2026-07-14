@@ -6,15 +6,16 @@ use std::collections::HashMap;
 use tauri::AppHandle;
 
 use crate::config;
-use crate::error::{AppError, AppResult};
+use crate::error::AppResult;
 use crate::process::SpawnCommand;
 use crate::state::AppState;
 use crate::substitute;
 
 /// Launch an app for a `run` route.
 ///
-/// `file` is taken from the `file` named param (if present); the remaining
-/// named params and positional `arg=` values feed the template (§3).
+/// Resolves the command, records the CLI in the log, then spawns on a detached
+/// thread so Launch Services / target-app startup cannot stall URL dispatch or
+/// leave a log row stuck at `Handled` with no CLI.
 pub fn launch(
     app: &AppHandle,
     state: &AppState,
@@ -38,17 +39,23 @@ pub fn launch(
             &command.args,
         ) {
             log::warn!("failed to update launch log {log_id}: {e}");
-        } else {
-            crate::logs::emit_update(app, state);
         }
+        // Emit after persist so the UI can show the CLI even if spawn stalls.
+        crate::logs::emit_update(app, state);
     }
 
     log::info!("run: {} {:?}", command.program, command.args);
 
-    std::process::Command::new(&command.program)
-        .args(&command.args)
-        .spawn()
-        .map_err(|e| AppError::Other(format!("failed to launch '{}': {e}", def.exec)))?;
+    let program = command.program.clone();
+    let args = command.args.clone();
+    let exec = def.exec.clone();
+    // Detach spawn from the dispatch thread. macOS Launch Services (and some
+    // GUI targets) can block the caller; that must not freeze deep-link handling.
+    std::thread::spawn(move || {
+        if let Err(e) = std::process::Command::new(&program).args(&args).spawn() {
+            log::warn!("failed to launch '{exec}': {e}");
+        }
+    });
 
     Ok(())
 }

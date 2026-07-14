@@ -49,6 +49,27 @@ pub fn run() {
             if window.label() != "main" {
                 return;
             }
+
+            // Closing the window (red traffic light / title-bar X) should hide
+            // back to the tray, not tear down the process. Quit remains an
+            // explicit tray-menu action.
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let state = window.state::<Arc<AppState>>();
+                if let Err(e) = state
+                    .main_window_state
+                    .lock()
+                    .expect("main window state lock poisoned")
+                    .set(MainWindowState::MinimizedToTray)
+                {
+                    log::warn!("failed to persist main window tray-minimized state: {e}");
+                }
+                if let Err(e) = window.hide() {
+                    log::warn!("failed to hide main window to tray on close: {e}");
+                }
+                return;
+            }
+
             if !matches!(event, WindowEvent::Resized(_)) {
                 return;
             }
@@ -107,6 +128,18 @@ pub fn run() {
                     dispatch::handle_url(&h, url.as_str());
                 }
             });
+
+            // macOS may deliver the cold-start URL via Apple Event before
+            // on_open_url is registered. Drain get_current so it isn't dropped.
+            match app.deep_link().get_current() {
+                Ok(Some(urls)) => {
+                    for url in urls {
+                        dispatch::handle_url(&handle, url.as_str());
+                    }
+                }
+                Ok(None) => {}
+                Err(e) => log::warn!("failed to read cold-start deep link: {e}"),
+            }
 
             // ---- §7.2 system tray ----
             tray::build(&handle)?;

@@ -11,11 +11,18 @@ use crate::state::AppState;
 use crate::urlparse::{self, Route};
 
 /// Parse and act on a single `launcher://` URL.
+///
+/// Work runs off the calling thread so macOS Apple Event / deep-link delivery
+/// (and the UI event loop) are not blocked while we resolve and spawn a handler.
 pub fn handle_url(app: &AppHandle, raw: &str) {
-    log::info!("handling url: {raw}");
-    if let Err(e) = dispatch(app, raw) {
-        log::warn!("failed to handle url '{raw}': {e}");
-    }
+    let app = app.clone();
+    let raw = raw.to_string();
+    tauri::async_runtime::spawn_blocking(move || {
+        log::info!("handling url: {raw}");
+        if let Err(e) = dispatch(&app, &raw) {
+            log::warn!("failed to handle url '{raw}': {e}");
+        }
+    });
 }
 
 /// Re-run a URL from an explicit user action. This bypasses the inbound URI
@@ -51,12 +58,17 @@ fn dispatch_inner(app: &AppHandle, raw: &str) -> AppResult<()> {
             named,
             positional,
         } => {
-            let log_id = append_handled_log(app, &state, raw, "run", Some(&app_id));
+            // Persist Handled first (no emit yet). Launch marks CLI + emits,
+            // then spawns off-thread so a stuck target can't leave the UI on
+            // Handled with an empty CLI column.
+            let log_id = append_handled_log(&state, raw, "run", Some(&app_id));
             if let Err(e) =
                 crate::run::launch(app, &state, &app_id, &named, &positional, log_id.as_deref())
             {
                 if let Some(id) = &log_id {
                     mark_error_log(app, &state, id, &e.to_string());
+                } else {
+                    append_error_log(app, &state, raw, Some("run"), Some(&app_id), &e.to_string());
                 }
                 return Err(e);
             }
@@ -67,7 +79,8 @@ fn dispatch_inner(app: &AppHandle, raw: &str) -> AppResult<()> {
             dest,
             filename,
         } => {
-            let log_id = append_handled_log(app, &state, raw, "relay", Some(&app_id));
+            let log_id = append_handled_log(&state, raw, "relay", Some(&app_id));
+            crate::logs::emit_update(app, &state);
             // Relay is async (download → spawn → watch); run it off the caller.
             let app = app.clone();
             tauri::async_runtime::spawn(async move {
@@ -94,7 +107,6 @@ fn dispatch_inner(app: &AppHandle, raw: &str) -> AppResult<()> {
 }
 
 fn append_handled_log(
-    app: &AppHandle,
     state: &AppState,
     raw: &str,
     route_type: &str,
@@ -106,10 +118,7 @@ fn append_handled_log(
         .expect("logs lock poisoned")
         .append_handled_uri(raw, route_type, app_id)
     {
-        Ok(id) => {
-            crate::logs::emit_update(app, state);
-            Some(id)
-        }
+        Ok(id) => Some(id),
         Err(e) => {
             log::warn!("failed to append launch log: {e}");
             None

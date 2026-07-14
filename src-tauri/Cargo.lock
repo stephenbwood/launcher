@@ -2256,12 +2256,11 @@ dependencies = [
 
 [[package]]
 name = "launcher"
-version = "0.3.3"
+version = "0.3.7"
 dependencies = [
  "log",
  "notify",
  "notify-debouncer-mini",
- "plist",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
