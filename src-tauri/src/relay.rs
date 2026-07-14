@@ -307,6 +307,8 @@ fn spawn_editor_and_watch(
             &command.args,
         ) {
             log::warn!("failed to update launch log {log_id}: {e}");
+        } else {
+            crate::logs::emit_update(app, state);
         }
     }
 

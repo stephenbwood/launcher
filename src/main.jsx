@@ -202,6 +202,16 @@ function App() {
   }, []);
 
   useEffect(() => {
+    let unlistenLogs = null;
+    listen("logs:update", (event) => setLogs(event.payload))
+      .then((unlisten) => {
+        unlistenLogs = unlisten;
+      })
+      .catch(console.error);
+    return () => unlistenLogs?.();
+  }, []);
+
+  useEffect(() => {
     if (view === "logs") refreshLogs().catch(console.error);
   }, [refreshLogs, view]);
 

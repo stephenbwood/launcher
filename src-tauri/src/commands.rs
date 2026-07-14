@@ -193,13 +193,10 @@ pub fn list_sessions(state: State<'_, Arc<AppState>>) -> Vec<Session> {
 
 // ---- Logs screen: handled URI history ----
 
+/// Current log list (the frontend also subscribes to `logs:update` events).
 #[tauri::command]
 pub fn list_logs(state: State<'_, Arc<AppState>>) -> Vec<crate::logs::LogEntry> {
-    state
-        .logs
-        .lock()
-        .expect("logs lock poisoned")
-        .list_newest_first()
+    crate::logs::snapshot(&state)
 }
 
 #[tauri::command]
@@ -248,8 +245,10 @@ fn placeholder_values(template: &[String]) -> HashMap<String, String> {
 }
 
 #[tauri::command]
-pub fn clear_logs(state: State<'_, Arc<AppState>>) -> AppResult<()> {
-    state.logs.lock().expect("logs lock poisoned").clear()
+pub fn clear_logs(app: AppHandle, state: State<'_, Arc<AppState>>) -> AppResult<()> {
+    state.logs.lock().expect("logs lock poisoned").clear()?;
+    crate::logs::emit_update(&app, &state);
+    Ok(())
 }
 
 #[tauri::command]

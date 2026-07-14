@@ -1,10 +1,15 @@
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
+use tauri::{AppHandle, Emitter};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
 use crate::error::AppResult;
+use crate::state::AppState;
+
+/// Frontend event emitted whenever the log list changes.
+pub const EVENT_UPDATE: &str = "logs:update";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -164,6 +169,23 @@ fn now() -> String {
     OffsetDateTime::now_utc()
         .format(&Rfc3339)
         .unwrap_or_default()
+}
+
+/// Snapshot all log entries, newest first, for the UI.
+pub fn snapshot(state: &AppState) -> Vec<LogEntry> {
+    state
+        .logs
+        .lock()
+        .expect("logs lock poisoned")
+        .list_newest_first()
+}
+
+/// Emit the current log list to the frontend.
+pub fn emit_update(app: &AppHandle, state: &AppState) {
+    let list = snapshot(state);
+    if let Err(e) = app.emit(EVENT_UPDATE, &list) {
+        log::warn!("failed to emit {EVENT_UPDATE}: {e}");
+    }
 }
 
 #[cfg(test)]

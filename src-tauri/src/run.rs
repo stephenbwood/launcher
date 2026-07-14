@@ -3,6 +3,8 @@
 
 use std::collections::HashMap;
 
+use tauri::AppHandle;
+
 use crate::config;
 use crate::error::{AppError, AppResult};
 use crate::process::SpawnCommand;
@@ -14,6 +16,7 @@ use crate::substitute;
 /// `file` is taken from the `file` named param (if present); the remaining
 /// named params and positional `arg=` values feed the template (§3).
 pub fn launch(
+    app: &AppHandle,
     state: &AppState,
     app_id: &str,
     named: &HashMap<String, String>,
@@ -35,6 +38,8 @@ pub fn launch(
             &command.args,
         ) {
             log::warn!("failed to update launch log {log_id}: {e}");
+        } else {
+            crate::logs::emit_update(app, state);
         }
     }
 

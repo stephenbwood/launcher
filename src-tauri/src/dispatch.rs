@@ -40,7 +40,7 @@ fn dispatch_inner(app: &AppHandle, raw: &str) -> AppResult<()> {
     let route = match urlparse::parse(raw) {
         Ok(route) => route,
         Err(e) => {
-            append_error_log(&state, raw, None, None, &e.to_string());
+            append_error_log(app, &state, raw, None, None, &e.to_string());
             return Err(e);
         }
     };
@@ -51,12 +51,12 @@ fn dispatch_inner(app: &AppHandle, raw: &str) -> AppResult<()> {
             named,
             positional,
         } => {
-            let log_id = append_handled_log(&state, raw, "run", Some(&app_id));
+            let log_id = append_handled_log(app, &state, raw, "run", Some(&app_id));
             if let Err(e) =
-                crate::run::launch(&state, &app_id, &named, &positional, log_id.as_deref())
+                crate::run::launch(app, &state, &app_id, &named, &positional, log_id.as_deref())
             {
                 if let Some(id) = &log_id {
-                    mark_error_log(&state, id, &e.to_string());
+                    mark_error_log(app, &state, id, &e.to_string());
                 }
                 return Err(e);
             }
@@ -67,7 +67,7 @@ fn dispatch_inner(app: &AppHandle, raw: &str) -> AppResult<()> {
             dest,
             filename,
         } => {
-            let log_id = append_handled_log(&state, raw, "relay", Some(&app_id));
+            let log_id = append_handled_log(app, &state, raw, "relay", Some(&app_id));
             // Relay is async (download → spawn → watch); run it off the caller.
             let app = app.clone();
             tauri::async_runtime::spawn(async move {
@@ -83,7 +83,7 @@ fn dispatch_inner(app: &AppHandle, raw: &str) -> AppResult<()> {
                 .await
                 {
                     if let Some(id) = &log_id {
-                        mark_error_log(&state, id, &e.to_string());
+                        mark_error_log(&app, &state, id, &e.to_string());
                     }
                     log::warn!("relay session failed to start: {e}");
                 }
@@ -94,6 +94,7 @@ fn dispatch_inner(app: &AppHandle, raw: &str) -> AppResult<()> {
 }
 
 fn append_handled_log(
+    app: &AppHandle,
     state: &AppState,
     raw: &str,
     route_type: &str,
@@ -105,7 +106,10 @@ fn append_handled_log(
         .expect("logs lock poisoned")
         .append_handled_uri(raw, route_type, app_id)
     {
-        Ok(id) => Some(id),
+        Ok(id) => {
+            crate::logs::emit_update(app, state);
+            Some(id)
+        }
         Err(e) => {
             log::warn!("failed to append launch log: {e}");
             None
@@ -114,6 +118,7 @@ fn append_handled_log(
 }
 
 fn append_error_log(
+    app: &AppHandle,
     state: &AppState,
     raw: &str,
     route_type: Option<&str>,
@@ -127,10 +132,12 @@ fn append_error_log(
         .append_error(raw, route_type, app_id, error)
     {
         log::warn!("failed to append error launch log: {e}");
+        return;
     }
+    crate::logs::emit_update(app, state);
 }
 
-fn mark_error_log(state: &AppState, id: &str, error: &str) {
+fn mark_error_log(app: &AppHandle, state: &AppState, id: &str, error: &str) {
     if let Err(e) = state
         .logs
         .lock()
@@ -138,7 +145,9 @@ fn mark_error_log(state: &AppState, id: &str, error: &str) {
         .mark_error(id, error)
     {
         log::warn!("failed to update launch log {id}: {e}");
+        return;
     }
+    crate::logs::emit_update(app, state);
 }
 
 /// Scan a process's argv for the first `launcher://` argument (§4.1/§4.3).
